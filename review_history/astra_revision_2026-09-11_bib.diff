@@ -1,0 +1,38 @@
+--- Prospectus/review_history/prospectus_before_astra_2026-09-10.bib
++++ Prospectus/prospectus_revised_draft.bib
+@@ -146,7 +146,7 @@
+   note         = {1,008,597 complaints; \$20.9 billion in reported losses},
+ }
+ 
+-@article{lu2026readthis,
++@misc{lu2026readthis,
+   author        = {Lu, Allison and Medeiros, Bernardo B. P. and Butler, Kevin R. B. and Traynor, Patrick},
+   title         = {Read This Paper to Get \$50 Million: An Analysis of Mobile Messaging Scams Using Reddit Data},
+   year          = {2026}
+@@ -166,7 +166,7 @@
+ 	year    = {2025},
+ }
+ 
+-@article{sun2026prescam,
++@misc{sun2026prescam,
+   title  = {PreScam: A Benchmark for Predicting Scam Progression from Early Conversations},
+   author = {Sun, Weixiang and Ma, Shang and Li, Yiyang and Ma, Tianyi and
+             Wang, Zehong and Nelson, Colby and Xiao, Xusheng and Ye, Yanfang},
+@@ -244,3 +244,17 @@
+   pages     = {5635--5649},
+   year      = {2019}
+ }
++
++@article{warner2024modernbert,
++	title   = {Smarter, Better, Faster, Longer: A Modern Bidirectional Encoder for Fast, Memory Efficient, and Long Context Finetuning and Inference},
++	author  = {Warner, Benjamin and Chaffin, Antoine and Clavi{\'e}, Benjamin and Weller, Orion and Hallstr{\"o}m, Oskar and Taghadouini, Said and Gallagher, Alexis and Biswas, Raja and Ladhak, Faisal and Aarsen, Tom and Cooper, Nathan and Adams, Griffin and Howard, Jeremy and Poli, Iacopo},
++	journal = {arXiv preprint arXiv:2412.13663},
++	year    = {2024},
++}
++
++@inproceedings{hu2022lora,
++  title     = {{LoRA}: Low-Rank Adaptation of Large Language Models},
++  author    = {Hu, Edward J. and Shen, Yelong and Wallis, Phillip and Allen-Zhu, Zeyuan and Li, Yuanzhi and Wang, Shean and Wang, Lu and Chen, Weizhu},
++  booktitle = {International Conference on Learning Representations (ICLR)},
++  year      = {2022}
++}

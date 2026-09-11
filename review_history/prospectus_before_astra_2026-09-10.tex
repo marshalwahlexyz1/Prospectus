@@ -1,0 +1,557 @@
+\documentclass[letterpaper,11pt]{article}
+\usepackage{times}
+\usepackage[margin=1in]{geometry}
+\usepackage[singlespacing]{setspace}
+\usepackage[hidelinks]{hyperref}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+
+\begin{document}
+
+% ===================== TITLE PAGE =====================
+\begin{titlepage}
+\begin{center}
+\large
+BOSTON UNIVERSITY\\[0.5em]
+DEPARTMENT OF ELECTRICAL AND COMPUTER ENGINEERING\\[2em]
+PhD Prospectus\\[3em]
+
+{\bfseries MULTI-LAYER SECURITY FOR MOBILE USERS:
+MEASUREMENT AND MITIGATION FROM APPLICATIONS TO CONVERSATION}\\[3em]
+By\\[2em]
+
+OLAWALE AMOS AKANJI\\
+B.Sc.\ Cyber Security, Air Force Institute of Technology, Nigeria, 2023\\
+M.S., Boston University, 2026\\[3em]
+
+Advisor: Prof.\ Gianluca Stringhini\\
+Co-Advisor: Prof.\ Manuel Egele
+\end{center}
+
+\vfill
+
+\begin{center}\bfseries Abstract\end{center}
+\noindent
+Mobile users face security and privacy threats at every layer of the
+ecosystem they depend on: the applications they install, the platform
+mechanisms that govern those applications, and the conversations they
+hold on their devices. This dissertation develops defenses for users at
+each of these layers. At the application layer, \emph{The Cost of
+Convenience} (ACM ASIA CCS 2026) presents the first cross-country
+measurement of predatory loan-app compliance with national regulations
+and Google's Financial Services Policy, analyzing 434 apps across five
+countries; following our disclosures, Google removed 93 apps
+representing over 300 million installs. Investigating how such apps
+retain access to sensitive data despite policy restrictions led to the
+platform layer: \emph{Silent Consent, Persistent Risk} shows, through a
+longitudinal analysis of 19.3 million APKs, that Android's permission
+groups silently auto-grant new permissions across updates (17\% of
+multi-version apps expand silently, and malware does so at
+significantly higher rates) and that normal-level custom permissions
+expose sensitive data to unrelated apps without any prompt; a
+lightweight prototype restores update-time transparency without OS
+modification. Yet even compliant apps on a hardened platform cannot
+protect users who are manipulated directly. The third layer is the
+conversation. \emph{SIRENBERT} detects \emph{conversational scams},
+multi-turn exchanges in which a suspect under a false identity,
+situation, or purpose induces the target to part with money, by
+modeling the exchange message by message on the user's device: a
+compact encoder labels each message with one of 14 observable
+behavioral triggers, and a recurrent model over the trigger sequence
+tracks the conversation's lifecycle and raises a warning before the
+financial demand. On 22,750 conversations from 5 real and 5 synthetic
+sources, labelled message by message under a sequential constraint,
+the trigger stream carries information the demand alone does not:
+real scam conversations show a median of 2 public-guidance indicators
+before the first demand, benign conversations with a demand show none
+in 90\% of cases. The proposed work extends the conversation layer
+beyond text: scammers send images, screenshots, voice notes, and video
+whose function is credibility, and the dissertation will measure these
+\emph{credibility artifacts} at scale, test whether their claims agree
+with the conversation's, and fold them into the on-device trajectory
+model. Together the three layers defend mobile users wherever
+exploitation reaches them.
+\end{titlepage}
+
+% ===================== BODY =====================
+
+\section{Introduction}
+\label{sec:intro}
+
+Mobile devices mediate nearly every aspect of their users' lives, and
+for billions of people, particularly in emerging markets, they are the
+sole gateway to financial services~\cite{suri2016mpesa,findex2021}.
+This centrality exposes users to security and privacy threats at
+multiple layers of the mobile ecosystem: the \emph{applications} they
+install, the \emph{platform mechanisms} that are supposed to govern
+what those applications can do, and the \emph{conversations} they hold
+through their devices. My research protects users at each of these
+layers. Rather than one system, this dissertation comprises three
+studies, each identifying how users are harmed at one layer and
+delivering a concrete, deployed or deployable defense.
+
+My work began at the application layer. In emerging markets, digital
+lending applications (loan apps) have become a primary channel for
+microcredit, but many demand excessive permissions and weaponize the
+harvested data, contact lists, SMS, photos, for coercive debt
+recovery: harassment, blackmail, and public shaming of borrowers and
+their contacts. In \emph{The Cost of Convenience: Identifying,
+Analyzing, and Mitigating Predatory Loan Applications on
+Android}~\cite{akanji2026cost}, we conducted the first cross-country
+measurement of loan-app compliance with national regulations and
+Google's Financial Services Policy, and our disclosures led Google to
+remove 93 apps with over 300 million cumulative installs
+(\S\ref{sec:loanapps}).
+
+That analysis raised a deeper question. While studying how loan-app
+developers retain access to sensitive data despite policy
+restrictions, we observed that circumvention does not always require
+malice or obfuscation: certain Android mechanisms enable it by
+default. Once a user approves one permission from a group, updates can
+silently add sibling permissions without any prompt, and developer-defined
+custom permissions at the default protection level are auto-granted at
+install with no user visibility at all. This moved my focus to the
+platform layer. In \emph{Silent Consent, Persistent Risk: Android
+Permission Groups and Custom Permissions}~\cite{akanji2026silent}, we
+measured both mechanisms at ecosystem scale, 19.3 million APKs,
+validated their exploitability on Android 16, showed that malware
+preferentially engages them, and built a transparency prototype that
+restores update-time consent visibility using only public APIs
+(\S\ref{sec:silentconsent}).
+
+Applications and the platform, however, are not the only sources of
+risk: users can be exploited directly, through the conversations their
+devices host. In 2025 the FBI's Internet Crime Complaint Center
+received 1,008,597 complaints totaling \$20.9 billion, and the
+categories that operate through sustained conversation account for
+most of it: investment fraud alone \$8.6 billion, confidence and
+romance schemes a further \$929 million~\cite{ic32025}. No permission
+policy or platform hardening can protect a user who willingly sends
+money to someone they trust. My third study, \emph{SIRENBERT}, defends
+this layer for \emph{conversational scams} as a class, romance,
+investment, advance-fee, employment and related persuasion-based fraud
+alike, with a privacy-preserving, on-device detector that models the
+conversation's behavioral trajectory message by message
+(\S\ref{sec:sirenbert}). The proposed work extends that defense to the
+images, screenshots, voice notes, and video that scammers send to
+manufacture credibility (\S\ref{sec:proposed}).
+
+\textbf{Thesis statement.} \emph{Mobile users are exploited at three
+distinct layers, the applications they install, the platform mechanisms
+that govern those applications, and the conversations their devices
+host, and a defense at one layer does not protect against the others.
+Protecting users therefore requires measuring the harm and deploying a
+defense at each layer, and this dissertation does both.}
+
+\section{Background and State of the Art}
+\label{sec:background}
+
+\subsection{Predatory Digital Lending}
+Loan apps promise fast, collateral-free microcredit to populations
+underserved by formal banking~\cite{suri2016mpesa}. Many, however,
+obscure predatory terms and adopt digitized coercive debt-collection
+tactics enabled by data harvested at install time. Governments in
+affected countries have introduced registration and privacy
+constraints for digital lenders, and Google's Financial Services
+Policy (FSP) prohibits personal-loan apps from requesting high-risk
+permissions such as \texttt{READ\_CONTACTS} and
+\texttt{READ\_SMS}~\cite{googlefsp}; yet abuse reports, and user
+suicides linked to loan-app harassment, persist. Prior academic work
+is primarily qualitative, interviews and case studies documenting
+distress and perceived data misuse; before our work there was no
+large-scale technical measurement of whether regulator-approved apps
+actually comply with either national rules or platform policy.
+
+\subsection{The Android Permission Model and Its Legacy Mechanisms}
+Android's permission system has been studied extensively for
+over-privilege and user
+comprehension~\cite{felt2011demystified,felt2012attention,wijesekera2015remystified}.
+Android 6.0's runtime permissions were designed to restore informed
+consent, but two mechanisms inherited from Android 1.0 remain active
+in Android 16. \emph{Permission groups} reduce prompt fatigue by
+auto-granting new permissions within an already-approved group during
+updates, with no dialog and no Settings indication. \emph{Normal-level
+custom permissions}, the default when developers omit a protection
+level, are auto-granted at install to any requesting app regardless of
+developer identity. Prior work documented confused-deputy attacks and
+isolated exposures~\cite{tuncay2018custom,gamba2020preinstalled}, and
+Calciati et al.~\cite{calciati2020automatically} measured group
+auto-grant on 2.9M app versions, but the mechanisms' current
+prevalence, their association with malice, and their exploitability on
+modern Android remained open questions.
+
+\subsection{Conversational Scams}
+A \emph{conversational scam} is a multi-turn exchange in which a
+suspect uses a deceptive identity, situation, or purpose to induce the
+target to part with financial resources, through a request or
+instruction whose fraudulent nature is supported by earlier evidence in
+the conversation. Romance fraud, pig butchering, advance-fee,
+employment, and technical-support fraud are its families; Sun et
+al.\ organise 177,989 victim reports into 11,573 such instances across
+20 categories~\cite{sun2026prescam}. Studies of individual families
+describe the same progression in different vocabularies: contact,
+trust building, pre-exploitation setup, and a financial
+demand~\cite{whitty2013scammers,oak2025anna,acharya2024explorative,spokoyny2025victim}.
+The setup phase is built to be indistinguishable from legitimate
+conversation, which defeats existing detection: keyword and rule
+detectors fire only on money language, after the grooming, and misfire
+on ordinary money talk; learned classifiers judge completed
+transcripts, after the harm; prompted language models are accurate on
+whole conversations but too costly and privacy-invasive to run on every
+private message, and reported error rates on romance and wrong-number
+exchanges are substantial~\cite{lu2026readthis,topcuoglu2026genai}.
+Before this work no labeled dataset followed these conversations
+message by message, the granularity at which a deployable detector
+must operate, and no detector treated the class as a whole.
+
+\section{Completed Work I: The Cost of Convenience}
+\label{sec:loanapps}
+
+\emph{The Cost of Convenience: Identifying, Analyzing, and Mitigating
+Predatory Loan Applications on Android}~\cite{akanji2026cost},
+published at ACM ASIA CCS 2026, protects users at the application
+layer through measurement, disclosure, and policy recommendations.
+
+\textbf{Approach.} We collected 434 loan apps from regulator registries
+and app markets in Indonesia, Kenya, Nigeria, Pakistan, and the
+Philippines, translated regulatory and platform policy prose into
+testable permission checks with an LLM-assisted
+\emph{policy-to-permission mapping}, and combined it with static
+analysis of app code and dynamic analysis of what data leaves the
+device and when.
+
+\textbf{Key findings.} Non-compliance is pervasive among
+\emph{approved} apps: 141 violate national regulatory policy and 147
+violate Google's FSP, with combined downloads above 300 million; 37 apps
+transmit contacts, SMS, location, or media at launch, before any signup,
+eliminating even the possibility of informed consent. National
+regulations and platform policy are systematically misaligned, so an
+app can satisfy one authority while violating the other.
+
+\textbf{Impact.} Following our coordinated disclosure, Google removed
+93 flagged apps from Google Play. The methodology is directly usable
+by regulators and platforms as a proactive compliance-monitoring
+pipeline.
+
+\section{Completed Work II: Silent Consent, Persistent Risk}
+\label{sec:silentconsent}
+
+Studying how developers circumvent permission policies in
+\S\ref{sec:loanapps} revealed that the platform itself provides
+circumvention paths by default. \emph{Silent Consent, Persistent Risk:
+Android Permission Groups and Custom
+Permissions}~\cite{akanji2026silent} measures these paths at ecosystem
+scale and protects users by restoring the visibility the platform
+withholds.
+
+\textbf{Research questions and approach.} How far do permission groups
+enable silent capability expansion across updates; is that expansion an
+ecosystem-wide consent failure or disproportionately a property of
+malware; how prevalent are normal-level custom permissions that expose
+data across developers, and is exploitation confirmed on current
+Android; and can an interface-level intervention restore update-time
+visibility without OS modification? We analyzed 19,324,760 APKs from
+5,965,583 apps in AndroZoo~\cite{allix2016androzoo}, tracking
+permission evolution across versions, operationalized malice through
+VirusTotal detections under a threshold sensitivity
+sweep~\cite{zhu2020vt}, validated exploitability with per-pair probe
+apps on Android 16, and attributed the exposed surface to app-core code
+versus bundled libraries.
+
+\textbf{Key findings.} Among 2,244,575 multi-version apps, 381,026
+(17\%) silently gain permissions within already-granted groups, and
+the auto-grant fires across every dangerous group on Android 16 with
+no runtime dialog. Silent expansion is preferentially engaged by
+malware: odds ratio 1.35 ($p<0.001$), rising to 2.06 in the most
+permission-heavy quartile, and significant at every tested detection
+threshold. We identified 307 cross-developer normal-custom-permission
+pairs re-delegating contacts, SMS, location, authentication
+credentials, identity, and medical records to unrelated apps without
+any prompt, confirmed active exploitability with instrumented probe
+apps, and attributed most of the exposed surface to bundled
+third-party libraries rather than app-core code.
+
+\textbf{Mitigation.} A prototype built on public Android APIs restores
+update-time transparency: in a 96-day deployment it surfaced 23 silent
+expansion events across 13 apps, including apps with over one billion
+installs, at about one notification every four days.
+
+\section{Current Work III: SIRENBERT}
+\label{sec:sirenbert}
+
+\emph{SIRENBERT: On-Device Detection of Conversational Scams by
+Modeling Messages in Conversations} defends the conversation layer.
+The system is built and deployed in an Android messaging client; the
+remaining work is the re-annotation, retraining, and evaluation
+described in \S\ref{sec:tasks}.
+
+\textbf{Definition and characteristics.} We adopt the definition in
+\S\ref{sec:background} and operationalise its three aspects. A
+multi-turn exchange: every conversation in our data has at least 7
+messages; real scam conversations have a median of 66 and reach the
+first financial demand at median message 17, and the demand opens the
+conversation in 1 case out of 4,298. Deception: observed through
+misrepresentation signals in the conversation, never through a
+judgement of what is true. A financial demand: a message whose
+compliance would cost the target money or economic value. Across the
+real scam conversations no persuasion tactic is universal, emotional
+appeal appears in 84\%, romance in 61\%, an investment offer in 23\%,
+which is why the class, and the detector, are defined over the
+sequence and not over any one tactic.
+
+\textbf{Lifecycle and triggers.} The progression documented by the
+family studies is formalised as 5 lifecycle states over 14 observable
+\emph{behavioral triggers}: 2 contact behaviors, 3 relationship
+behaviors, 8 pre-exploitation behaviors (credibility positioning, gain
+offers, verification avoidance, platform migration, love bombing,
+crisis disclosure, emotional manipulation, urgency pressure), and the
+financial demand. Each trigger names what a message does to the
+conversation, and a trigger is added to the set only if it changes the
+next lifecycle transition. A demand carries a sub-type, exploitative or
+benign, and a structured basis citing the earlier messages that make
+it exploitative; a conversation is labelled a scam only when an
+exploitative demand cites earlier pre-exploitation behavior, derived by
+one versioned rule from the message labels.
+
+\textbf{Dataset.} No public dataset follows scam conversations message by
+message, so we assembled a proxy dataset from sources that each capture
+a different part of the phenomenon (Table~\ref{tab:data}). LoveFraud02
+contributes 83 romance-fraud conversations recorded with genuine scammers
+by a researcher, 30 to 3,405 messages each. Reddit Scambait contributes
+1,142 conversations recovered by OCR from screenshots posted to
+r/scambait and verified against the images; the scammer side is
+authentic and the pretexts vary widely, which makes it our main source
+of family diversity, and the scambaiter side is a distribution shift we
+evaluate explicitly. Topical-Chat and XDailyDialog supply benign
+dialogue, the latter chosen because its warm interpersonal tone is close
+to the surface of romance scams. PersuasionForGood supplies 1,017
+charity solicitations in which one person persuades another to give
+money: sustained, emotionally framed, and directed at a genuine demand,
+the closest available match to what a detector must not flag. Two
+generated corpora, a pig-butchering set built to the family's full
+extraction cycle and ScamForge conversations grounded on 3,288 BBB
+romance-scam reports, cover behavior combinations rare in the real
+sources and are used for stress testing only, never in the primary test
+set. Every conversation is labelled message by message by a language
+model annotator under a sequential constraint (it sees only the prefix a
+deployed detector would see), with a second annotator over the same
+conversations to measure annotator dependence. Real scam conversations
+are 48\% romance, 9\% romance-investment (pig butchering), 11\%
+shopping and delivery, 7\% friend-or-family emergency, 6\% employment,
+5\% advance fee; 1,916 real benign conversations contain a financial
+demand. Sextortion is outside the scope and held separately.
+
+\begin{table}[h]\centering\footnotesize\setlength{\tabcolsep}{4pt}\begin{tabular}{@{}lrrr@{}}\toprule
+Source & Type & Convs. & Annotated msgs. \\\midrule
+LoveFraud02 (victim transcripts, romance)~\cite{faber2024lovefraud02} & real scam & 83 & 26,423 \\
+Reddit Scambait (OCR of screenshot posts) & real scam & 1,142 & 65,685 \\
+Topical-Chat~\cite{gopalakrishnan2019topical} & real benign & 8,628 & 97,204 \\
+XDailyDialog~\cite{li2017dailydialog} & real benign & 3,100 & 19,981 \\
+PersuasionForGood~\cite{wang2019persuasion} & real benign & 1,017 & 10,600 \\
+Generated pig butchering (scam / benign) & synthetic & 5,683 & 237,296 \\
+Generated ScamForge (scam / benign / hard negative) & synthetic & 3,097 & 152,371 \\
+\midrule \textbf{Total} & & \textbf{22,750} & \textbf{609,560} \\\bottomrule\end{tabular}
+\caption{The SIRENBERT dataset after the sextortion exclusion. Annotated messages are the suspect side, the side a detector classifies.}\label{tab:data}\end{table}
+
+\textbf{Lifecycle states and triggers.} Table~\ref{tab:triggers} gives
+the vocabulary. The state after a message is a deterministic function of
+the previous state and the trigger: contact and small talk reach at most
+\textsc{initial\_contact}, relationship triggers
+\textsc{relationship\_building}, pre-exploitation triggers
+\textsc{pre\_exploitation}, and a financial demand reaches
+\textsc{exploitation} only from \textsc{pre\_exploitation}; states
+never move backward. The state summarizes what has been observed; the
+scam verdict is separate: a conversation is \textsc{scam} when an
+exploitative demand cites earlier pre-exploitation behavior,
+\textsc{suspicious} when such behavior occurs with no qualifying
+demand, and \textsc{non\_scam} otherwise, derived by one versioned rule
+from the message labels and never from the annotator's own opinion.
+
+\begin{table}[h]\centering\footnotesize\setlength{\tabcolsep}{4pt}\begin{tabular}{@{}llp{3.6in}@{}}\toprule
+State admitted & Trigger & Applies when \\\midrule
+Initial contact & WrongNumber\_Intro & contact opens under a wrong-number pretext \\
+ & Introduction\_Opener & a self-introduction to a stranger \\\midrule
+Relationship & Trust\_Building & personal history shared or invited to prompt disclosure \\
+building & Affectionate\_Language & warmth within ordinary courtship \\
+ & SmallTalk\_Maintenance & routine conversation that sustains contact \\\midrule
+Pre-exploitation & Credential\_Positioning & standing, wealth, authority or expertise asserted for credibility \\
+ & Gain\_Offer & an investment, job, prize or other gain held out to the target \\
+ & Verification\_Avoidance & identity checks deflected, or suspect-controlled proof presented \\
+ & Platform\_Migration & moving the conversation to another channel \\
+ & Love\_Bombing & romantic love or commitment declared to the target \\
+ & Crisis\_Disclosure & an acute emergency presented \\
+ & Emotional\_Manipulation & guilt, obligation or affection used as leverage \\
+ & Urgency\_Pressure & deadlines or scarcity imposed \\\midrule
+Exploitation & Financial\_Demand & a request whose compliance costs the target money or economic value; carries a sub-type and a cited basis \\
+\bottomrule\end{tabular}
+\caption{The 14 behavioral triggers. Each names what a message does to the conversation, applied to the text alone; none asserts intent.}\label{tab:triggers}\end{table}
+
+\textbf{Architecture.} Detection is two stages on the device.
+\emph{Stage 1}, inside the messaging application, reads message $m_t$
+with the $k$ preceding messages, each prefixed by its sender, and emits
+a probability over the 14 triggers and, for a demand, its sub-type; we
+compared DistilBERT and ModernBERT at 512 and 8,192 tokens across
+$k \in \{0,\ldots,15\}$, and a rank-64 LoRA adapter over a frozen
+Gemma-4-E4B, the class of model phones already ship, which reaches
+$0.986 \pm 0.005$ conversation SCAM-F$_1$ where prompting the same model
+fails at 0.06 macro-F$_1$. \emph{Stage 2}, a unidirectional GRU over the
+$[T \times 14]$ trigger sequence, re-scores the conversation after every
+message with a terminal head for the scam decision and an auxiliary
+head for whether setup has begun; it is unidirectional by requirement,
+since a detector that runs as messages arrive cannot condition on the
+future. Only trigger vectors are buffered; message text is never stored
+or transmitted. The pipeline runs in Element X for Android through
+ONNX Runtime Mobile at 435\,ms per message; export is lossless, dynamic
+INT8 quantization is the entire on-device accuracy gap (recall 0.804 to
+0.686), so FP16 is the deployment artifact.
+
+\textbf{Evaluation protocol.} Model selection uses nested 5-fold
+cross-validation over pooled training data with the test partition
+untouched~\cite{cawley2010overfitting,varma2006bias}; every reported
+number is a mean over 3 seeds with bootstrap 95\% intervals; results
+are reported per source as well as pooled, and entire sources and
+families are held out to test transfer. Detection lead time relative to
+the first validated demand is the deployment-critical metric, and every
+deployment claim is backed by bulk replay of the held-out partition
+through the Android client on real hardware.
+
+\textbf{Results to date.} On the evidence side, real scam conversations
+show a median of 2 public-guidance indicators before the first demand
+(51.8\% show 2 or more), while benign conversations with a demand show
+a median of 0 and reach the demand with none in 90.1\% of cases;
+relationship-building indicators rise steeply with conversation length
+(claims of affection 11\% to 82\% across length quartiles) while the
+investment offer falls. On the model side, the nested-cross-validation
+selection reaches 0.863 $\pm$ 0.005 conversation SCAM-F$_1$ over 3
+seeds on a 1,297-conversation held-out partition under the labels it was
+trained on; under the revised rule-derived labels the same models score
+0.70, because the partition gains 22 positives they never saw, which is
+why retraining under the rule is the first remaining task.
+
+\subsection{Remaining Tasks for SIRENBERT}
+\label{sec:tasks}
+
+\textbf{RT1 --- Re-annotation under the revised guide and retraining.}
+Version 7 of the annotation guide records structured evidence
+citations, drops the intent field, and quarantines invalid output;
+after a 200-conversation pilot with human review, the full corpus is
+re-annotated and the encoders and recurrent model retrained under the
+rule-derived labels, with nested cross-validation, 3 seeds, and
+bootstrap intervals as before.
+
+\textbf{RT2 --- Generalisation and robustness.} Leave-one-family-out
+evaluation (train on romance and investment, test on advance fee and
+employment, and the converse) tests whether the trigger stream
+transfers across families; the adversarial suite (distractor padding,
+paraphrase, slow-play stretching of the lifecycle) quantifies robustness
+bounds. A facet ablation on two triggers decides whether finer
+distinctions add detection value.
+
+\textbf{RT3 --- Cross-application state and user-facing warnings.}
+Platform migration is a scripted step, so the exploitation often
+completes in a different app from the grooming; the on-device design
+will carry trajectory state across applications under explicit consent,
+and an IRB-approved study will evaluate warning timing and framing with
+users who are already emotionally invested.
+
+\section{Proposed Work: Credibility Artifacts in Conversational Scams}
+\label{sec:proposed}
+
+SIRENBERT reads text, but scammers also send a photo in uniform, a
+passport, a screenshot of a trading balance, a voice note, a video call
+with a borrowed face. The behavior these serve, presenting
+suspect-controlled evidence as proof or deflecting verification, appears
+in 63\% of real scam conversations, and the artifact itself is
+invisible to a text detector. The proposed work studies these
+\emph{credibility artifacts} as part of the conversation layer.
+
+\textbf{RQ1 --- Measurement.} What artifacts do scammers send, at which
+lifecycle stage, and how much of it is reused or synthetic? The Reddit
+scambaiting corpus consists of chat screenshots that embed the images
+scammers sent; a new crawl retaining full-resolution originals and post
+metadata, followed by extraction of the embedded images, yields the
+first large-scale corpus of scam artifacts with their conversational
+context. Reuse is measured by perceptual hashing against known
+scam-photo collections and across our own corpus; synthetic share by
+generation detectors, reported with their known decay over time.
+
+\textbf{RQ2 --- Cross-modal consistency.} Does the artifact's claim
+agree with the conversation's? A text that says oil-rig engineer beside
+a stock photograph of an army officer is a contradiction no single
+modality can see. We will extract the claims an artifact makes
+(identity, occupation, location, wealth, proof of returns) and test
+them against the triggers already recorded for the conversation,
+turning an artifact into an event in the same trajectory.
+
+\textbf{RQ3 --- On-device fusion.} An artifact event becomes a trigger
+with its own evidence, consumed by the same recurrent model. The
+privacy constraint is argued per artifact type: perceptual-hash lookups
+can be made private, uploading a photograph cannot, and voice notes are
+transcribed on the device and enter the text pipeline unchanged. We
+will measure what each artifact type adds to detection lead time and
+false-alarm rate over the text-only system. Images, screenshots, and
+voice notes are in scope; live video calls are treated as a threat and
+evaluated only where public material exists.
+
+\subsection{Anticipated Contributions}
+\label{sec:contrib}
+
+This dissertation will contribute, at the application layer, the first
+cross-country compliance-measurement methodology for financial apps,
+with demonstrated real-world impact (93 removals, 300M+ installs); at
+the platform layer, the largest longitudinal measurement of consent
+erosion in Android permissions, evidence that malware preferentially
+exploits it, and a practical transparency countermeasure requiring no
+OS modification; and at the conversation layer, a definition and lifecycle
+formalization of conversational scams as a class, the first
+message-level labeled dataset for it, an on-device early-warning
+detector evaluated across scam families, and the first large-scale
+measurement and detection of the credibility artifacts scammers send. Collectively, the work
+advances mobile security from post-hoc, transcript-level, single-point
+responses toward proactive protection of users at every layer where
+exploitation reaches them.
+
+\section{Research Plan and Timeline}
+\label{sec:timeline}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{1.4in}p{4.6in}}
+\toprule
+\textbf{Period} & \textbf{Milestones} \\
+\midrule
+Fall 2026 & Prospectus defense. RT1: v7 pilot, full re-annotation, retraining under the
+rule-derived labels; submit SIRENBERT. New Reddit crawl with originals and metadata. \\
+Spring 2027 & RT2: leave-one-family-out and adversarial suite. RQ1: artifact
+extraction and measurement (reuse, synthetic share, lifecycle stage). \\
+Summer 2027 & RQ2: cross-modal consistency; RT3 study design and IRB approval. \\
+Fall 2027 & RQ3: on-device fusion and evaluation; submit the artifacts paper; RT3 user study. \\
+Spring 2028 & Complete remaining evaluations; dissertation writing and defense. \\
+\bottomrule
+\end{tabular}
+\caption{Anticipated timetable for completion.}
+\end{table}
+
+\section{Summary}
+
+Mobile users are exploited through the apps they install, the platform
+mechanisms meant to govern those apps, and the conversations they
+trust. My completed work has protected users at the first two layers,
+removing predatory apps from the ecosystem and restoring visibility
+into silent consent erosion, each with demonstrated real-world impact.
+The third layer is defended by SIRENBERT, an on-device early-warning
+system for conversational scams that reaches users before the financial
+demand; the proposed work extends it to the images, screenshots, and
+voice that scammers use to manufacture credibility.
+
+% ===================== BIBLIOGRAPHY =====================
+{\footnotesize
+\bibliographystyle{plain}
+\bibliography{prospectus_revised_draft}}
+
+% ===================== CV =====================
+% Attach up-to-date CV here (not counted toward the 10-page limit).
+
+\end{document}

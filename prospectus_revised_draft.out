@@ -1,0 +1,14 @@
+\BOOKMARK [1][-]{section.1}{Introduction}{}% 1
+\BOOKMARK [1][-]{section.2}{Background and Research Gaps}{}% 2
+\BOOKMARK [2][-]{subsection.2.1}{Application behavior and permission visibility}{section.2}% 3
+\BOOKMARK [2][-]{subsection.2.2}{Conversational scams and evidence beyond text}{section.2}% 4
+\BOOKMARK [1][-]{section.3}{Completed Work I: The Cost of Convenience}{}% 5
+\BOOKMARK [1][-]{section.4}{Completed Work II: Silent Consent, Persistent Risk}{}% 6
+\BOOKMARK [1][-]{section.5}{Ongoing Work III: Conversational Scam Detection}{}% 7
+\BOOKMARK [2][-]{subsection.5.1}{Problem, scope, and working representation}{section.5}% 8
+\BOOKMARK [2][-]{subsection.5.2}{Proxy dataset and preliminary observations}{section.5}% 9
+\BOOKMARK [2][-]{subsection.5.3}{Detection model and remaining evaluation}{section.5}% 10
+\BOOKMARK [1][-]{section.6}{Proposed Work: Credibility Artifacts in Conversational Scams}{}% 11
+\BOOKMARK [2][-]{subsection.6.1}{Problem and motivation}{section.6}% 12
+\BOOKMARK [2][-]{subsection.6.2}{Feasibility, risks, and completion criteria}{section.6}% 13
+\BOOKMARK [1][-]{section.7}{Research Plan and Expected Contributions}{}% 14

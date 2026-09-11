@@ -1,0 +1,50 @@
+{
+  "topical_chat": {
+    "conversations": 8628,
+    "annotated_suspect_messages": 97204
+  },
+  "pig_butchering_scam": {
+    "conversations": 2824,
+    "annotated_suspect_messages": 135115
+  },
+  "daily_dialog": {
+    "conversations": 3100,
+    "annotated_suspect_messages": 19981
+  },
+  "lovefraud_without_fd": {
+    "conversations": 37,
+    "annotated_suspect_messages": 9420
+  },
+  "pig_butchering_nonscam": {
+    "conversations": 2859,
+    "annotated_suspect_messages": 102181
+  },
+  "scamforge_benign_qwen25_v2": {
+    "conversations": 1265,
+    "annotated_suspect_messages": 52595
+  },
+  "scamforge_qwen25_v2": {
+    "conversations": 954,
+    "annotated_suspect_messages": 63056
+  },
+  "scamforge_hard_negative": {
+    "conversations": 878,
+    "annotated_suspect_messages": 36720
+  },
+  "lovefraud_with_fd": {
+    "conversations": 46,
+    "annotated_suspect_messages": 17003
+  },
+  "persuasion_for_good": {
+    "conversations": 1017,
+    "annotated_suspect_messages": 10600
+  },
+  "scambait_without_fd": {
+    "conversations": 727,
+    "annotated_suspect_messages": 27868
+  },
+  "scambait_with_fd": {
+    "conversations": 415,
+    "annotated_suspect_messages": 36422
+  }
+}

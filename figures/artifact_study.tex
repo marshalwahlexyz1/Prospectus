@@ -1,0 +1,14 @@
+\begin{tikzpicture}[font=\small,>=Latex,
+ b/.style={draw=teal!65!black,fill=teal!4,rounded corners=2pt,align=center,minimum height=1.05cm,text width=3.35cm},
+ a/.style={->,thick,draw=teal!65!black}]
+\node[b] (raw) at (0,0) {Public screenshot posts\\Images and provenance};
+\node[b] (rec) at (5,0) {Reconstruct exchange\\Text, speaker, order, crops};
+\node[b] (valid) at (10,0) {Quality review\\Accept, correct, or withhold};
+\node[b] (measurement) at (0,-2) {\textbf{RQ1: Measurement}\\Artifact type, timing, reuse};
+\node[b] (claims) at (5,-2) {\textbf{RQ2: Interpretation}\\Claims and evidence\\in context};
+\node[b] (fusion) at (10,-2) {\textbf{RQ3: Detection}\\Incremental value on device};
+\draw[a] (raw)--(rec); \draw[a] (rec)--(valid);
+\draw[a] (valid.south)--(fusion.north);
+\draw[a] (valid.south) -- ++(0,-.33) -| (measurement.north);
+\draw[a] (measurement)--(claims); \draw[a] (claims)--(fusion);
+\end{tikzpicture}

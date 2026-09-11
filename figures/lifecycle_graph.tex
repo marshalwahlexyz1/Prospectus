@@ -1,0 +1,17 @@
+\begin{tikzpicture}[font=\scriptsize,>=Latex,
+ state/.style={draw=blue!55!black,rounded corners,align=center,minimum height=.8cm,fill=blue!4,text width=2.05cm},
+ arr/.style={->,draw=blue!55!black,thick}]
+\node[state] (n) at (0,0) {Start\\$s=0$};
+\node[state] (i) at (3,0) {Initial\\contact\\$s=1$};
+\node[state] (r) at (6,0) {Relationship\\building\\$s=2$};
+\node[state] (p) at (9,0) {Pre-exploitation\\behavior\\$s=3$};
+\node[state] (e) at (12,0) {Demand after\\setup\\$s=4$};
+\draw[arr] (n)--node[above=4mm]{contact}(i);
+\draw[arr] (i)--node[above=4mm]{rapport}(r);
+\draw[arr] (r)--node[above=4mm]{setup}(p);
+\draw[arr] (p)--node[above=4mm]{demand}(e);
+\draw[arr] (n.north) to[bend left=25] node[above]{setup may appear immediately} (p.north);
+\draw[arr] (i.south) to[bend right=23] node[below]{setup may precede rapport} (p.south);
+\draw[arr] (p) edge[loop above,looseness=5,min distance=11mm] node[above]{further setup / ordinary talk} (p);
+\draw[arr] (e) edge[loop right,looseness=5,min distance=8mm] node[right]{later messages} (e);
+\end{tikzpicture}

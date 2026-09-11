@@ -1,0 +1,627 @@
+\documentclass[letterpaper,11pt]{article}
+\usepackage{times}
+\usepackage[margin=1in]{geometry}
+\usepackage[singlespacing]{setspace}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx,booktabs,array,tabularx}
+\usepackage{flafter}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,automata}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+\setlength{\emergencystretch}{1.5em}
+\newcommand{\researchquestion}[1]{\par\medskip\noindent\textbf{#1}\quad}
+\begin{document}
+\begin{titlepage}
+\begin{center}
+\large BOSTON UNIVERSITY\\[.5em]
+DEPARTMENT OF ELECTRICAL AND COMPUTER ENGINEERING\\[1.5em]
+PhD Prospectus\\[2em]
+{\bfseries MULTI-LAYER SECURITY FOR MOBILE USERS:\\
+MEASUREMENT AND MITIGATION FROM APPLICATIONS TO CONVERSATION}\\[2em]
+By\\[1em]
+OLAWALE AMOS AKANJI\\
+B.Sc.\ Cyber Security, Air Force Institute of Technology, Nigeria, 2023\\
+M.S., Boston University, 2026\\[1.5em]
+Advisor: Prof.\ Gianluca Stringhini\\
+Co-Advisor: Prof.\ Manuel Egele
+\end{center}
+\vfill
+\begin{center}\bfseries Abstract\end{center}
+\noindent
+Mobile users can lose control of their data and money through harmful applications,
+platform mechanisms that obscure changes in access, and deceptive conversations.
+This dissertation investigates these three settings through measurement and the
+assessment of practical defenses. Two studies provide its foundation.
+\emph{The Cost of Convenience} examines loan applications across five countries
+and connects policy requirements to observable application behavior; coordinated
+disclosure led to the removal of 93 applications from Google Play.
+\emph{Silent Consent, Persistent Risk} studies permission expansion and
+cross-application access in Android, combining a longitudinal corpus of
+19.3 million APKs with targeted device experiments and a transparency prototype.
+The ongoing third study, \emph{SIRENBERT}, investigates whether a sequence of
+observable conversational behaviors can support timely warnings about financial
+scams on the user's device. An encoder--recurrent-model prototype and a proxy
+conversation corpus provide a starting point, while annotation validation,
+generalization, warning timing, and deployment evaluation remain research tasks.
+The proposed extension examines images and other media presented as evidence of
+identity, circumstances, or financial opportunity. I will reconstruct conversations
+and embedded images from public screenshot collections, measure how these
+artifacts are used, and test whether their interpretation in context improves
+warnings over text alone. The central question is how evidence available at each
+layer can be translated into useful protection while preserving user privacy and
+controlling false alarms. The dissertation will distinguish demonstrated findings
+from the hypotheses that these remaining studies will test.
+\end{titlepage}
+
+\section{Introduction}
+\label{sec:intro}
+Mobile devices mediate access to financial services, private communication, and
+personal information. Their importance is especially visible where mobile money
+provides access to services that conventional banking does not readily
+reach~\cite{suri2016mpesa,findex2021}. This dependence creates several opportunities
+for abuse. An application may collect information inconsistent with its stated
+purpose; a platform may grant access without making the change visible; and a
+person using an otherwise legitimate messaging application may be persuaded to
+send money under false pretenses. These problems involve different evidence and
+intervention points, but share a concern: users may have little opportunity to
+recognize a developing risk before a consequential action occurs.
+
+My dissertation examines this concern at the application, platform, and
+conversation levels. The first study measures how loan applications comply with
+regulatory and platform requirements and how their runtime behavior exposes
+sensitive data~\cite{akanji2026cost}. The second investigates Android permission
+mechanisms that allow capabilities or cross-application access to expand without
+renewed user visibility~\cite{akanji2026silent}. Together, these studies establish
+methods for connecting policy or permission abstractions to observable behavior
+and for assessing interventions in realistic settings.
+
+The remaining research addresses conversational financial exploitation. Access
+controls can constrain an application's use of data, but they do not determine
+whether a request made through that application is trustworthy. A request for
+money can be legitimate, and behaviors such as affection, professional
+self-presentation, and urgency also occur outside scams. The research problem is
+therefore to determine whether the evolving context of an exchange provides
+useful evidence for a timely warning, without treating ordinary persuasion or
+financial discussion as sufficient evidence of fraud.
+
+\textbf{Thesis proposition.} \emph{Measuring how access and trust develop over
+time can reveal risks that are obscured by isolated application, permission, or
+message observations. These measurements can inform defenses at the point where
+the relevant evidence is available, with their value assessed through detection
+quality, timeliness, user visibility, and deployment cost.}
+
+This proposition does not require a single detector for all three settings.
+The completed studies provide evidence at the application and platform levels.
+The ongoing conversation study tests behavioral sequence modeling, and the
+proposed extension asks whether images presented within an exchange add useful
+evidence. Sections~\ref{sec:loanapps} and~\ref{sec:silentconsent} summarize completed
+work; Sections~\ref{sec:sirenbert} and~\ref{sec:proposed} specify what remains to be
+established.
+
+\section{Background and Research Gaps}
+\label{sec:background}
+\subsection{Application behavior and permission visibility}
+Digital lending can improve access to credit, but loan applications also create
+opportunities for intrusive data collection and coercive debt recovery.
+Registration requirements and platform permission policies provide complementary
+constraints. The application-level question is whether the behavior of approved
+applications is consistent with those requirements, rather than whether approval
+alone indicates safety. My loan-app study connects policy interpretation to
+static and dynamic measurements~\cite{akanji2026cost}.
+
+Android permissions have been studied in terms of application privileges and
+users' understanding of access requests. Felt et al.\ examined permission use
+and user attention, while Wijesekera et al.\ investigated the context in which
+users make permission decisions~\cite{felt2011demystified,felt2012attention,wijesekera2015remystified}.
+Calciati et al.\ measured automatically granted permissions across application
+versions; Tuncay et al.\ studied custom-permission weaknesses; and Gamba et al.\
+examined preinstalled software~\cite{calciati2020automatically,tuncay2018custom,gamba2020preinstalled}.
+My platform study builds on this work by measuring permission evolution at larger
+scale and testing selected access paths on Android 16. Its prototype addresses
+visibility into changes, rather than claiming to prevent all misuse of an
+otherwise granted permission.
+
+\subsection{Conversational scams and evidence beyond text}
+Whitty describes the persuasive progression of romance fraud. Oak and Shafiq
+use victim interviews to examine relationship-based investment scams, including
+trust development, financial exploitation, and subsequent re-engagement.
+Acharya and Holz investigate the practices and infrastructure associated with
+pig-butchering scams~\cite{whitty2013scammers,oak2025anna,acharya2024explorative}.
+These studies motivate examining connected behaviors over time; they do not
+imply that every scam follows one fixed sequence or that a particular tactic
+uniquely identifies fraud.
+
+Recent detection work provides useful comparison points. Lu et al.\ study mobile
+messaging scams using Reddit data, Sun et al.\ introduce a benchmark for scam
+progression, and Topcuoglu et al.\ compare generative-model approaches to scam
+detection~\cite{lu2026readthis,sun2026prescam,topcuoglu2026genai}.
+Their settings and data sources motivate complementary questions about
+message-level evidence, transfer between sources, and device constraints.
+Our scam-family labels will describe our own data; an external benchmark's
+categories are supporting context rather than a required taxonomy.
+
+The remaining gap is the reliability and utility of a representation that can
+be updated as a private conversation unfolds. This requires appropriate negative
+examples, validated message labels, and evaluation before the financial request.
+It also raises a multimodal question: a photograph, document, or balance screenshot
+may be presented as proof, while its relevance to a later request depends on what
+has already been said. Detecting image reuse or manipulation alone does not
+establish that an exchange is exploitative. The proposed work studies the
+artifact's role and contextual interpretation together.
+
+\section{Completed Work I: The Cost of Convenience}
+\label{sec:loanapps}
+\emph{The Cost of Convenience: Identifying, Analyzing, and Mitigating Predatory
+Loan Applications on Android}, published at ACM ASIA CCS 2026, investigates
+whether loan applications comply with national rules and Google's Financial
+Services Policy~\cite{akanji2026cost}.
+
+\textbf{Problem and approach.} An approved lender can still operate an
+application that collects prohibited data or exposes it before a borrower has
+completed registration. We studied 434 applications from registries and markets
+in Indonesia, Kenya, Nigeria, Pakistan, and the Philippines. An LLM-assisted
+policy-to-permission mapping translated policy text into testable checks, which
+we combined with static code inspection and dynamic observation of network and
+data-access behavior.
+
+\textbf{Findings and contribution.} Among approved applications, 141 violated
+national regulatory requirements and 147 violated platform policy. In the dynamic
+analysis, 37 of 148 functioning applications transmitted sensitive information
+at launch after permissions were granted, before signup or a loan application.
+Following coordinated disclosure, Google removed 93 flagged applications,
+representing over 300 million cumulative installs. These installation counts
+indicate potential exposure, not a count of verified victims. The study
+contributes a measurement method and evidence for more consistent compliance
+assessment across regulatory and platform requirements.
+
+\section{Completed Work II: Silent Consent, Persistent Risk}
+\label{sec:silentconsent}
+\emph{Silent Consent, Persistent Risk: Android Permission Groups and Custom
+Permissions} examines how application capabilities and data access can change
+without corresponding user visibility~\cite{akanji2026silent}.
+
+\textbf{Problem and approach.} A permission decision made for one application
+version may not convey what a later version can access. Custom permissions can
+also protect components in ways that admit unrelated applications. We analyzed
+19,324,760 APKs representing 5,965,583 applications in
+AndroZoo~\cite{allix2016androzoo}, tracked permission changes, and compared their
+association with VirusTotal detections across thresholds~\cite{zhu2020vt}.
+Targeted Android 16 experiments tested whether selected mechanisms remained
+exploitable. A prototype using public Android APIs exposed otherwise silent
+permission changes to the user.
+
+\textbf{Findings and limits.} Of 2,244,575 multi-version applications, 381,026
+(17\%) exhibited within-group permission expansion. Malware-flagged applications
+had higher odds of expansion at the primary threshold (odds ratio 1.35), an
+association rather than evidence that every expansion is malicious. Static
+analysis identified 307 active cross-developer access pairs. Dynamic retrieval
+of sensitive data was confirmed for the 39 pairs amenable to probing on
+Android 16; the dynamic claim does not extend to all 307 pairs. In a 96-day
+single-device pilot, the transparency prototype reported 23 expansion events
+across 13 applications. This establishes feasibility of providing visibility,
+while broader usability and protective effects require further evaluation.
+
+\section{Ongoing Work III: Conversational Scam Detection}
+\label{sec:sirenbert}
+SIRENBERT investigates whether observable behaviors, interpreted in sequence,
+can support early warnings about conversational scams on a mobile device.
+A text-classification and recurrent-model prototype has been implemented,
+including an Android messaging-client integration. Establishing the reliability
+of its supervision, its ability to generalize, and the usefulness of its warnings
+remains part of this dissertation.
+
+\subsection{Problem, scope, and working representation}
+A \emph{conversational scam} is a multi-turn exchange in which a suspect uses
+false pretenses to induce a target to part with money or other economic value
+through a request or instruction. The three defining aspects are a multi-turn
+interaction, deception, and a financial demand. The study includes romance,
+investment, advance-fee, employment, and related financial scams where these
+aspects are present. Our evaluated scope focuses on suspect-requested financial
+actions; coercion-based sextortion is held separately.
+
+This problem definition is broader than what a transcript can establish.
+We do not independently verify an occupation, emergency, or promised return.
+For annotation, we identify observable behavior and assess whether an explicit
+financial demand is supported as exploitative by its preceding context.
+A demand provides a reproducible reference point for studying a scam attempt;
+no completed payment is required, and the demand need not end the transcript.
+Earlier concerning behavior can warrant an early-warning hypothesis without
+being labeled a confirmed scam attempt. A direct request for money, by itself,
+is insufficient to establish exploitation.
+
+The current vocabulary contains fourteen triggers (Table~\ref{tab:triggers}).
+They describe conversational functions rather than scam families or proven
+intent. For example, wealth and professional standing can both supply a claim
+to credibility, motivating their initial grouping. We will test that grouping
+through annotation reliability and finer-granularity comparisons. A common
+state transition is not sufficient proof that distinctions are unnecessary,
+and assigning every message a label does not establish complete behavioral
+coverage. Independent review will identify missed known acts, overlaps hidden
+by single-label precedence, and relevant acts absent from the vocabulary.
+
+\begin{table}[tb]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}p{.24\linewidth}Xp{.14\linewidth}@{}}
+\toprule
+Trigger & Observable behavior & State floor \\
+\midrule
+WrongNumber\_Intro & Mistaken-contact framing with visible continued engagement & Contact \\
+Introduction\_Opener & Initial greeting or introduction & Contact \\
+SmallTalk\_Maintenance & Routine discussion, logistics, or acknowledgment & Contact \\
+Trust\_Building & Personal disclosure or invitation to confide & Relationship \\
+Affectionate\_Language & Warmth without explicit romantic commitment & Relationship \\
+Credential\_Positioning & Standing, resources, or expertise presented for credibility & Setup \\
+Gain\_Offer & Prospective financial benefit offered to the target & Setup \\
+Verification\_Avoidance & Repeated checking deflection or suspect-controlled proof & Setup \\
+Platform\_Migration & Proposal to continue on another communication channel & Setup \\
+Love\_Bombing & Explicit romantic declaration or commitment & Setup \\
+Crisis\_Disclosure & Acute personal emergency presented & Setup \\
+Emotional\_Manipulation & Guilt, obligation, or relational leverage & Setup \\
+Urgency\_Pressure & Pressure for prompt action & Setup \\
+Financial\_Demand & Request/instruction that would cost the target economic value & Guarded \\
+\bottomrule
+\end{tabularx}
+\caption{Working behavioral vocabulary. These acts also occur in legitimate
+exchanges. State floors govern bookkeeping, not the legitimacy of a message.
+The legacy name Love\_Bombing denotes the operational declaration test here.}
+\label{tab:triggers}
+\end{table}
+
+Let $a_t$ denote the trigger for suspect message $t$, and let the ordered state
+$s_t\in\{0,1,2,3,4\}$ represent no observed behavior, initial contact,
+relationship building, pre-exploitation behavior, and a demand after setup.
+Define $b(a)$ as 1 for contact/maintenance, 2 for relationship behaviors, and 3
+for the eight setup behaviors. The current deterministic summary is
+\begin{equation}
+ s_0=0,\qquad
+ s_t=\begin{cases}
+ 4, & a_t=D\ \text{and}\ s_{t-1}\geq3,\\
+ \max(s_{t-1},1), & a_t=D\ \text{and}\ s_{t-1}<3,\\
+ \max(s_{t-1},b(a_t)), & a_t\neq D,
+ \end{cases}
+ \label{eq:state}
+\end{equation}
+where $D$ denotes Financial\_Demand. Thus ordinary messages do not erase
+previously observed setup, and setup need not be preceded by a rapport phase
+(Figure~\ref{fig:lifecycle}). This is a working summary of observed behavior,
+not a claim that every person follows a monotonic psychological process.
+
+\begin{figure}[tb]
+\centering\resizebox{\linewidth}{!}{\input{figures/lifecycle_graph}}
+\caption{Illustrative transitions in the working lifecycle summary. All states
+can persist, and observed conversations may skip stages. Reaching the final
+state does not itself establish exploitation.}
+\label{fig:lifecycle}
+\end{figure}
+
+Conversation labels are derived separately. Let $q_t=1$ only when a demand is
+interpreted as exploitative and its cited earlier setup messages support that
+interpretation. Citations must resolve to the correct preceding messages;
+human review must assess their semantic support. For an eligible, reviewed
+conversation $C$, the operational rule is
+\begin{equation}
+Y(C)=\begin{cases}
+\textsc{scam}, & \exists t:\ a_t=D\ \land\ q_t=1,\\
+\textsc{suspicious}, & \text{otherwise, if a setup trigger occurs},\\
+\textsc{non-scam}, & \text{otherwise}.
+\end{cases}
+\label{eq:label}
+\end{equation}
+Unresolved annotations will be withheld from conversation-level supervision
+rather than converted into negative targets. The state and label can disagree:
+a legitimate payment request after a crisis can reach state 4 without satisfying
+Equation~\ref{eq:label}'s scam condition.
+
+\subsection{Proxy dataset and preliminary observations}
+Direct, complete records of private scam conversations are scarce. We therefore
+assembled a proxy corpus combining recorded exchanges, public screenshots,
+ordinary dialogue, and legitimate persuasive requests. LoveFraud02 contains
+researcher-recorded exchanges with purported romance-fraud perpetrators;
+Reddit Scambait provides screenshot-based exchanges involving people who knowingly
+engage suspected scammers~\cite{faber2024lovefraud02,lu2026readthis}.
+Neither source should be described as a representative sample of unsuspecting
+victims. Missing screenshots, selective posting, performative responses, and
+uncertain role attribution limit what they establish.
+
+Topical-Chat and a DailyDialog-derived subset provide ordinary dialogue, while
+PersuasionForGood provides financially consequential but legitimate donation
+requests~\cite{gopalakrishnan2019topical,li2017dailydialog,wang2019persuasion}.
+The latter is particularly important for distinguishing persuasion from fraud.
+Generated investment/relationship conversations and report-grounded ScamForge
+conversations extend the available behavior combinations. Their intended scam
+or benign status is a generation condition, not a verified label. They will
+support controlled stress tests and augmentation experiments, with primary
+real-source evaluation reported separately.
+
+\begin{table}[tb]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}Xrr@{}}
+\toprule
+Source & Conversations & Annotated suspect messages \\
+\midrule
+LoveFraud02 & 83 & 26,423 \\
+Reddit Scambait & 1,142 & 64,290 \\
+Topical-Chat & 8,628 & 97,204 \\
+DailyDialog-derived subset & 3,100 & 19,981 \\
+PersuasionForGood & 1,017 & 10,600 \\
+Generated pig-butchering scenarios & 5,683 & 237,296 \\
+Generated ScamForge scenarios & 3,097 & 152,371 \\
+\midrule
+Total & 22,750 & 608,165 \\
+\bottomrule
+\end{tabularx}
+\caption{Existing proxy corpus after the documented scope exclusions, before
+adding the new Reddit crawl. Message counts describe annotated suspect-side
+messages, not all messages exchanged. Source provenance is distinct from the
+operational labels; revised annotations remain subject to validation.}
+\label{tab:data}
+\end{table}
+
+\textbf{Preliminary result.} In the current rule-derived analysis, 520
+conversations from the real scam-source collections receive a scam label.
+They contain a median of two distinct mapped indicators before the first
+financial demand; 52.3\% contain at least two. Among 1,685 benign-source
+conversations containing a demand but not receiving a scam label, 90.1\%
+contain no mapped indicator before that demand. These observations motivate
+studying context, but are not independent evidence of detector accuracy:
+both the indicators and cohort labels are derived from provisional annotations.
+The pilot will examine label errors and legitimate uses of the same behaviors.
+
+The new Reddit collection will expand candidate coverage, but its posts and
+images will enter this table only after conversation reconstruction,
+deduplication, and quality review. Increasing the number of screenshots alone
+does not resolve the corpus's source bias.
+
+\subsection{Detection model and remaining evaluation}
+\textbf{Stage 1: interpreting the message.} Let $m_t$ be the current suspect
+message and $\mathcal H_t^{(k)}$ the preceding context, including both speakers.
+A message classifier produces a distribution over the fourteen behaviors:
+\begin{equation}
+\mathbf z_t=\operatorname{softmax}\!\left(f_\theta(m_t,\mathcal H_t^{(k)})\right),
+\qquad \mathbf z_t\in[0,1]^{14}.
+\label{eq:encoder}
+\end{equation}
+The prototype uses compact Transformer encoders. I will compare DistilBERT,
+ModernBERT, and an on-device LLM adapted for behavioral classification, including
+appropriate distilled or quantized variants~\cite{sanh2019distilbert,warner2024modernbert,hu2022lora}.
+A common behavioral interface will support comparison of contextual accuracy,
+latency, memory, and energy. A larger context window or model is an experimental
+choice, not an assumed improvement.
+
+\textbf{Stage 2: interpreting the sequence.} The prototype passes trigger
+probabilities to a unidirectional GRU~\cite{cho2014gru}:
+\begin{equation}
+\mathbf h_t=\operatorname{GRU}_\phi(\mathbf z_t,\mathbf h_{t-1}),
+\qquad r_t=\sigma(\mathbf w^\top\mathbf h_t+c).
+\label{eq:sequence}
+\end{equation}
+Here $\mathbf h_t$ retains information across messages and $r_t$ is a learned
+risk score. The learned memory is distinct from the deterministic state $s_t$.
+I will compare the GRU with an LSTM and an explicit lifecycle updater, and test
+whether joint training improves on a frozen message encoder. Message-only and
+bounded-context baselines will establish whether sequence memory contributes
+beyond the current message (Figure~\ref{fig:architecture}).
+
+\begin{figure}[tb]
+\centering\resizebox{\linewidth}{!}{\input{figures/conversation_architecture}}
+\caption{Two-stage detection design. The encoder--GRU text pipeline provides
+the prototype; model choice, warning thresholds, and device performance will be
+evaluated. Private text is processed locally, including a bounded context buffer.}
+\label{fig:architecture}
+\end{figure}
+
+\textbf{Preliminary result and its boundary.} Nested cross-validation selected
+a ModernBERT configuration with ten preceding messages. On the original
+1,297-conversation test partition and its original labels, the selected system
+obtained scam F$_1=0.863\pm0.005$ across three seeds. This establishes a prototype
+baseline, not performance under the revised supervision. The revised label rule
+changes the target population, so retraining and fresh validation are required
+before a new headline result is reported. The Android integration demonstrates
+an implementation path; reliable early warning and protective impact have not
+been established by integration alone.
+
+\researchquestion{RQ-T: Can a behavioral sequence support timely, transferable warnings?}
+I will first validate the revised annotation guide on a human-reviewed pilot,
+including all fourteen behaviors, legitimate money requests, uncertain cases,
+and behaviors missing from the vocabulary. The resulting eligibility decisions
+will govern training and testing. I will then compare model configurations with
+selection confined to training/validation data and use newly reserved evaluation
+conversations~\cite{cawley2010overfitting,varma2006bias}. Related posts,
+conversation fragments, and generated variants will remain in the same partition.
+
+Evaluation will report class-specific precision/recall, macro-F$_1$, calibration,
+and false alarms per conversation, alongside warning time. If $d$ is the message
+position of the first validated exploitative demand and $\tau$ is a threshold
+chosen on validation data, define
+\begin{equation}
+\hat t_\tau=\min\{t:r_t\geq\tau\},\qquad L_\tau=d-\hat t_\tau.
+\label{eq:lead}
+\end{equation}
+Positive $L_\tau$ denotes a warning before the demand. I will report missed
+warnings separately, rather than omit them from average lead time; false alarms
+will also be measured in conversations without an exploitative demand.
+
+Entire-source and family holdouts will test transfer within the families with
+sufficient examples. Adversarial experiments will insert plausible ordinary
+conversation before or between setup messages: such padding can push evidence
+out of bounded context or dilute a learned sequence. Paraphrases and delayed
+requests will test related failure modes. Comparisons will preserve the
+underlying scam evidence and measure both missed detection and additional
+warning delay. On-device replay will assess agreement with the research model,
+quantization effects, latency, peak memory, and energy on named hardware.
+Cross-application linkage and warning presentation will be evaluated as
+extensions, with explicit consent and human-subjects review before any user study.
+
+\section{Proposed Work: Credibility Artifacts in Conversational Scams}
+\label{sec:proposed}
+\subsection{Problem and motivation}
+A conversational claim may be supported by a photograph, identity document,
+receipt, or investment screenshot. I use \emph{credibility artifact} to mean
+media presented within an exchange as evidence for an identity, circumstance,
+capability, transaction, or opportunity. The term describes its use; it does not
+presume that the artifact is forged or malicious. Ordinary photographs and
+documents may serve the same function in legitimate exchanges.
+
+The unresolved problem is whether these artifacts provide reliable additional
+evidence for scam detection, and whether that evidence arrives early enough to
+improve warnings. A text-only model may miss what a screenshot claims; an image
+classifier may miss why that claim matters to the request. Conversely, an
+apparently inconsistent or reused image may be benign, and a scammer can use
+genuine media. The proposed study will measure these cases before deciding how
+to incorporate artifact evidence into the detector. Its primary empirical scope
+is images and screenshots. Audio will be a conditional extension if usable
+original recordings become available; an audio-message icon in a screenshot is
+not an audio recording.
+
+\begin{figure}[htbp]
+\centering\resizebox{\linewidth}{!}{\input{figures/artifact_study}}
+\caption{Proposed artifact study. Collection and extraction supply candidate
+evidence; quality review precedes measurement and detector evaluation. Artifact
+presence and source membership do not supply automatic scam labels.}
+\label{fig:artifacts}
+\end{figure}
+
+\researchquestion{RQ1: What artifacts appear, and how are they used over a conversation?}
+\textbf{Why this matters.} A detector design needs evidence about which media
+are available, what claims they support, and when they appear. Without this
+measurement, a multimodal extension could focus on visually distinctive but
+rare or late-arriving content.
+
+\textbf{Approach.} I will combine the existing screenshot collection with a
+continuing Reddit crawl and historical archive retrieval. The collection will
+retain post identifiers, gallery order, available media, and retrieval status.
+I will reconstruct messages and embedded artifact regions while retaining
+links to their source pixels. Text recognition, spatial layout, and a vision
+language model will be compared for transcription and speaker attribution.
+Different extraction systems' agreement will prioritize review, but a human
+sample of agreeing outputs is also necessary to detect shared mistakes.
+
+Posts will be joined into a conversation only when continuity evidence supports
+the connection; matching an author or title is not sufficient. Screenshot overlap
+will be removed without deleting genuinely repeated messages. The review will
+distinguish the screenshot owner's messages from those of the suspected scammer,
+retain uncertain roles, and record missing sections. I will audit extraction
+quality by app interface, image length, compression, and source before measuring
+artifact prevalence, first appearance, and within/across-conversation reuse.
+Exact and perceptual image matches will identify reuse candidates, followed by
+review. A match demonstrates shared content, not identity theft or common criminal
+control. Synthetic-image detectors may provide exploratory scores, but those
+scores will not be reported as the prevalence of AI-generated scam imagery
+without suitable ground truth and calibration.
+
+\textbf{Evaluation and expected contribution.} The study will report message
+coverage, transcription error, speaker accuracy, artifact crop/link accuracy,
+and extraction yield before giving corpus-level measurements. A held-out audit
+will quantify selection and reconstruction limitations. The contribution will
+be a provenance-preserving measurement corpus and evidence about artifact use
+in observed exchanges, not a claim to represent all conversational fraud.
+
+\researchquestion{RQ2: Does an artifact support or conflict with the claims made in context?}
+\textbf{Why this matters.} Recognizing a face or extracting a balance does not
+establish what the sender asserts. A uniformed photograph is inconsistent with
+an occupation claim only if the sender presents the depicted person as themselves
+and the context makes those claims incompatible. The study must distinguish
+contradiction from irrelevance, ambiguity, and missing evidence.
+
+\textbf{Approach and evaluation.} I will annotate the artifact's visible content,
+the claim explicitly associated with it, and the earlier messages needed to
+interpret that claim. Candidate relations will include support, contradiction,
+and insufficient information. Text-only, artifact-only, and joint models will
+be compared on reviewed examples, including genuine documents, benign image
+reuse, edited screenshots, and scams using apparently consistent media.
+Controlled mismatches will test specific capabilities but will be reported
+separately from naturally occurring cases. Evidence localization and
+claim-relation accuracy will accompany classification metrics. The expected
+contribution is an evaluated contextual-evidence representation, including its
+failure and abstention cases, rather than automatic verification of identity.
+
+\researchquestion{RQ3: Does artifact evidence improve warnings under mobile constraints?}
+\textbf{Hypothesis.} When text alone leaves a claim ambiguous, an artifact's
+content and its relation to prior messages may improve detection at an acceptable
+false-alarm rate. Additional model complexity is justified only if the measured
+benefit survives source separation and device constraints.
+
+I will compare simple score combination with learned fusion. Let $\mathbf e_t$
+represent the artifact evidence available at message $t$, and let $u_t$ indicate
+whether an artifact is available. A candidate extension of Stage 2 is
+\begin{equation}
+\mathbf h_t^{\mathrm{multi}}=
+ g_\psi\!\left(\mathbf h_{t-1}^{\mathrm{multi}},
+ [\mathbf z_t;\mathbf e_t;u_t]\right).
+\label{eq:fusion}
+\end{equation}
+When no artifact is present, $u_t=0$ and a masked representation supplies no
+invented evidence. This formulation does not require turning every image type
+into a new trigger. The experiment will determine whether the representation
+and fusion mechanism help beyond the existing behavioral sequence.
+
+Evaluation will compare text alone, artifacts alone, and the combined system on
+the same eligible conversations, with component ablations. Related conversations
+and reused-image clusters will be separated across evaluation partitions to
+limit memorization. I will report recall at matched false-alarm rates, warning
+lead time, calibration, and robustness to cropping, compression, missing media,
+and benign media inserted to distract the detector. Device evaluation will include
+latency, energy, memory, and the cost of retaining context. The default deployment
+design will process private media locally. Any remote lookup would require its
+own privacy and utility analysis; privacy does not follow from using an image hash.
+
+\subsection{Feasibility, risks, and completion criteria}
+A Reddit collection and screenshot-extraction prototype are already underway.
+Initial extraction runs demonstrate that structured text and artifact candidates
+can be recovered, while tall screenshots, speaker confusion, and tile overlap
+remain concrete challenges. These are feasibility observations, not a completed
+accuracy evaluation. Screenshot crops may be too small or degraded for reliable
+artifact analysis; the study will report that yield and can still characterize
+observable use and timing without claiming to determine authenticity.
+
+The first milestone is a reviewed reconstruction sample and a frozen extraction
+contract. The second is a corpus measurement with documented selection and error
+rates. The third is a held-out comparison establishing when artifact evidence
+helps, harms, or adds no measurable value. A negative detection result remains
+informative if the evaluation identifies why the evidence is unavailable,
+unreliable, or redundant. Before release, personal identifiers will be reviewed
+and redacted where appropriate; data availability will reflect source permissions
+and human-subjects requirements rather than assume all collected media can be
+redistributed.
+
+\section{Research Plan and Expected Contributions}
+\label{sec:timeline}
+The remaining plan prioritizes reliable evidence before new model complexity.
+The first twelve months focus on the conversation-label pilot, reconstruction
+quality, text-model evaluation, and artifact measurement. The timetable below
+is provisional and depends on review capacity and the yield of usable media.
+
+\begin{table}[htbp]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}p{.19\linewidth}X@{}}
+\toprule
+Period & Deliverable and decision point \\
+\midrule
+Fall 2026 & Prospectus defense; freeze and review the annotation guide; validate
+reconstruction on held-out screenshots; establish an eligible corpus and leakage-aware splits. \\
+Spring 2027 & Retrain/evaluate text models; measure warning timing, source/family
+transfer, and padding robustness; complete initial artifact measurements. \\
+Summer 2027 & Complete the contextual-claim reference set and compare interpretation
+methods; decide which artifact evidence merits detector integration. \\
+Fall 2027 & Evaluate fusion and device costs; investigate warning presentation and
+cross-app continuity within approved study scope. Prepare manuscripts. \\
+Spring 2028 & Resolve remaining evaluations, document limitations and artifacts,
+and complete dissertation writing and defense. \\
+\bottomrule
+\end{tabularx}
+\caption{Provisional milestones. Model expansion follows evidence and quality
+checks rather than a predetermined accuracy or publication outcome.}
+\end{table}
+
+The completed studies contribute methods and findings about application compliance
+and permission visibility. The ongoing study is expected to contribute a validated
+behavioral representation and an evaluation of sequential, on-device scam
+warnings. The proposed artifact study will add a contextual measurement resource
+and evidence about the value and limits of multimodal detection. Together, these
+contributions will connect mobile-security measurements to interventions whose
+benefits and limitations are explicitly tested.
+
+{\footnotesize\bibliographystyle{unsrtnat}\bibliography{prospectus_revised_draft}}
+% Attach the candidate's current CV separately if required by the department.
+\end{document}

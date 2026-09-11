@@ -1,0 +1,15 @@
+\begin{tikzpicture}[font=\small, >=Latex,
+ block/.style={draw=blue!55!black, rounded corners=2pt, fill=blue!4, align=center, minimum height=1.18cm},
+ flow/.style={->,thick,draw=blue!55!black}]
+\node[block,text width=2.6cm] (input) at (0,0) {Message $m_t$\\+ recent context};
+\node[block,text width=3.0cm] (s1) at (3.75,0) {\textbf{Stage 1}\\Behavior classifier\\$\mathbf z_t\in[0,1]^{14}$};
+\node[block,text width=3.0cm] (s2) at (7.85,0) {\textbf{Stage 2}\\Sequence model\\memory $\mathbf h_t$};
+\node[block,text width=2.2cm] (warning) at (11.7,0) {Risk $r_t$\\Warning policy};
+\draw[flow] (input)--(s1);
+\draw[flow] (s1)--node[above,font=\scriptsize]{$\mathbf z_t$}(s2);
+\draw[flow] (s2)--(warning);
+\draw[flow] (s2.south east) -- ++(0,-.42) -| (s2.south west);
+\node[font=\scriptsize,align=center] (memory) at (7.85,-1.35) {Memory carried to the next message};
+\node[draw=blue!55!black,dashed,rounded corners,fit=(input)(s1)(s2)(warning)(memory),inner xsep=7pt,inner ysep=13pt] (device) {};
+\node[anchor=south west,font=\scriptsize\bfseries,text=blue!55!black] at (device.north west) {ON-DEVICE DETECTION: TEXT PROTOTYPE AND PLANNED MODEL COMPARISONS};
+\end{tikzpicture}
