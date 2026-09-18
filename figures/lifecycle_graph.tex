@@ -1,17 +1,20 @@
-\begin{tikzpicture}[font=\scriptsize,>=Latex,
- state/.style={draw=blue!55!black,rounded corners,align=center,minimum height=.8cm,fill=blue!4,text width=2.05cm},
- arr/.style={->,draw=blue!55!black,thick}]
-\node[state] (n) at (0,0) {Start\\$s=0$};
-\node[state] (i) at (3,0) {Initial\\contact\\$s=1$};
-\node[state] (r) at (6,0) {Relationship\\building\\$s=2$};
-\node[state] (p) at (9,0) {Pre-exploitation\\behavior\\$s=3$};
-\node[state] (e) at (12,0) {Demand after\\setup\\$s=4$};
-\draw[arr] (n)--node[above=4mm]{contact}(i);
-\draw[arr] (i)--node[above=4mm]{rapport}(r);
-\draw[arr] (r)--node[above=4mm]{setup}(p);
-\draw[arr] (p)--node[above=4mm]{demand}(e);
-\draw[arr] (n.north) to[bend left=25] node[above]{setup may appear immediately} (p.north);
-\draw[arr] (i.south) to[bend right=23] node[below]{setup may precede rapport} (p.south);
-\draw[arr] (p) edge[loop above,looseness=5,min distance=11mm] node[above]{further setup / ordinary talk} (p);
-\draw[arr] (e) edge[loop right,looseness=5,min distance=8mm] node[right]{later messages} (e);
+\begin{tikzpicture}[font=\small,>=Latex,
+ group/.style={draw=blue!55!black,rounded corners=3pt,align=center,minimum height=1.05cm,fill=blue!4,text width=2.25cm},
+ arr/.style={->,draw=blue!55!black,thick},
+ skip/.style={->,draw=gray!70,dashed,thick}]
+\node[group] (c) at (0,0) {\textbf{Contact}\\opens the interaction};
+\node[group] (r) at (3.5,0) {\textbf{Relationship}\\builds or maintains the interaction};
+\node[group] (t) at (7.2,0) {\textbf{Tactics}\\creates a reason, condition, or pressure};
+\node[group] (d) at (11.1,0) {\textbf{Financial Demand}\\asks for economic value};
+\draw[arr] (c)--(r);
+\draw[arr] (r)--(t);
+\draw[arr,bend left=12] (t) to (d);
+\draw[arr,bend left=12] (d) to (t);
+\draw[skip,bend left=28] (c.north) to node[above]{stages may be skipped} (t.north);
+\draw[skip,bend right=30] (c.south) to (d.south);
+\draw[skip,bend left=31] (r.north) to (d.north);
+\draw[arr] (c) edge[loop below,looseness=5,min distance=8mm] (c);
+\draw[arr] (r) edge[loop below,looseness=5,min distance=8mm] (r);
+\draw[arr] (t) edge[loop below,looseness=5,min distance=8mm] (t);
+\draw[arr] (d) edge[loop below,looseness=5,min distance=8mm] (d);
 \end{tikzpicture}

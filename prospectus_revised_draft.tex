@@ -204,254 +204,514 @@ while broader usability and protective effects require further evaluation.
 
 \section{Ongoing Work III: Conversational Scam Detection}
 \label{sec:sirenbert}
-SIRENBERT investigates whether observable behaviors, interpreted in sequence,
-can support early warnings about conversational scams on a mobile device.
-A text-classification and recurrent-model prototype has been implemented,
-including an Android messaging-client integration. Establishing the reliability
-of its supervision, its ability to generalize, and the usefulness of its warnings
-remains part of this dissertation.
+SIRENBERT investigates whether a mobile device can recognize a developing
+conversational scam from the evidence available at each point in an exchange.
+The work completed so far comprises a problem definition, a proxy corpus, a
+scam-family mapping, a behavioral representation, preliminary measurements,
+baseline comparisons, an encoder--recurrent-model prototype, and an Android
+integration. The revised annotation and model design described below is the
+current specification; its large-scale validation, retraining, generalization
+tests, and warning evaluation remain dissertation work.
 
-\subsection{Problem, scope, and working representation}
-A \emph{conversational scam} is a multi-turn exchange in which a suspect uses
-false pretenses to induce a target to part with money or other economic value
-through a request or instruction. The three defining aspects are a multi-turn
-interaction, deception, and a financial demand. The study includes romance,
-investment, advance-fee, employment, and related financial scams where these
-aspects are present. Our evaluated scope focuses on suspect-requested financial
-actions; coercion-based sextortion is held separately.
+\subsection{Problem definition and observable decision rule}
+A \emph{conversational scam} is a multi-turn exchange in which a suspect, under
+false pretenses, induces a target to part with money or other economic value
+through a request or instruction. This definition covers romance, investment,
+advance-fee, employment, marketplace, impersonation, technical-support, and
+related fraud when the financial action is requested through the exchange. The
+current evaluated scope requires at least four observed messages and participation
+by both parties. It excludes isolated solicitations and coercion-only sextortion,
+which do not require the conversational development studied here.
 
-This problem definition is broader than what a transcript can establish.
-We do not independently verify an occupation, emergency, or promised return.
-For annotation, we identify observable behavior and assess whether an explicit
-financial demand is supported as exploitative by its preceding context.
-A demand provides a reproducible reference point for studying a scam attempt;
-no completed payment is required, and the demand need not end the transcript.
-Earlier concerning behavior can warrant an early-warning hypothesis without
-being labeled a confirmed scam attempt. A direct request for money, by itself,
-is insufficient to establish exploitation.
+The broad definition describes the phenomenon, but a transcript cannot establish
+whether every claimed identity, emergency, or promised return is false in the
+world. The operational rule therefore uses observable evidence. A suspect message
+is a \emph{financial demand} when it asks or instructs the target to take an action
+that would cost money or other economic value. A demand becomes \emph{tactic-linked}
+when an earlier or co-occurring tactic in the observed exchange is explicitly
+connected to that demand. No completed payment is required. A demand without such
+evidence is recorded as \emph{not yet tactic-linked}; this describes what is
+observable at that point and does not assert that the request is legitimate.
 
-The current vocabulary contains fourteen triggers (Table~\ref{tab:triggers}).
-They describe conversational functions rather than scam families or proven
-intent. For example, wealth and professional standing can both supply a claim
-to credibility, motivating their initial grouping. We will test that grouping
-through annotation reliability and finer-granularity comparisons. A common
-state transition is not sufficient proof that distinctions are unnecessary,
-and assigning every message a label does not establish complete behavioral
-coverage. Independent review will identify missed known acts, overlaps hidden
-by single-label precedence, and relevant acts absent from the vocabulary.
-
-\begin{table}[tb]
-\centering\small
-\begin{tabularx}{\linewidth}{@{}p{.24\linewidth}Xp{.14\linewidth}@{}}
-\toprule
-Trigger & Observable behavior & State floor \\
-\midrule
-WrongNumber\_Intro & Mistaken-contact framing with visible continued engagement & Contact \\
-Introduction\_Opener & Initial greeting or introduction & Contact \\
-SmallTalk\_Maintenance & Routine discussion, logistics, or acknowledgment & Contact \\
-Trust\_Building & Personal disclosure or invitation to confide & Relationship \\
-Affectionate\_Language & Warmth without explicit romantic commitment & Relationship \\
-Credential\_Positioning & Standing, resources, or expertise presented for credibility & Setup \\
-Gain\_Offer & Prospective financial benefit offered to the target & Setup \\
-Verification\_Avoidance & Repeated checking deflection or suspect-controlled proof & Setup \\
-Platform\_Migration & Proposal to continue on another communication channel & Setup \\
-Love\_Bombing & Explicit romantic declaration or commitment & Setup \\
-Crisis\_Disclosure & Acute personal emergency presented & Setup \\
-Emotional\_Manipulation & Guilt, obligation, or relational leverage & Setup \\
-Urgency\_Pressure & Pressure for prompt action & Setup \\
-Financial\_Demand & Request/instruction that would cost the target economic value & Guarded \\
-\bottomrule
-\end{tabularx}
-\caption{Working behavioral vocabulary. These acts also occur in legitimate
-exchanges. State floors govern bookkeeping, not the legitimacy of a message.
-The legacy name Love\_Bombing denotes the operational declaration test here.}
-\label{tab:triggers}
-\end{table}
-
-Let $a_t$ denote the trigger for suspect message $t$, and let the ordered state
-$s_t\in\{0,1,2,3,4\}$ represent no observed behavior, initial contact,
-relationship building, pre-exploitation behavior, and a demand after setup.
-Define $b(a)$ as 1 for contact/maintenance, 2 for relationship behaviors, and 3
-for the eight setup behaviors. The current deterministic summary is
+Let $\mathcal B_t$ be the set of behaviors assigned to suspect message $t$, let
+$D$ denote \texttt{Financial\_Demand}, let $\mathcal T$ be the set of tactic
+triggers, and let $R(j,t)=1$ when reviewed evidence connects tactic $j$ to demand
+$t$. The causal status of a demand is
 \begin{equation}
- s_0=0,\qquad
- s_t=\begin{cases}
- 4, & a_t=D\ \text{and}\ s_{t-1}\geq3,\\
- \max(s_{t-1},1), & a_t=D\ \text{and}\ s_{t-1}<3,\\
- \max(s_{t-1},b(a_t)), & a_t\neq D,
+ \ell_t = \mathbb{I}[D\in\mathcal B_t]\,
+ \mathbb{I}\!\left[\exists j\leq t:
+   \mathcal B_j\cap\mathcal T\neq\varnothing\ \land\ R(j,t)=1\right].
+ \label{eq:demand-link}
+\end{equation}
+Here $\mathbb{I}[\cdot]$ is an indicator: it equals one when the condition in
+brackets is true and zero otherwise. Consequently, $\ell_t=1$ only for an
+observed demand with at least one reviewed tactic connection available by time
+$t$.
+The conversation label is binary:
+\begin{equation}
+ Y(C)=
+ \begin{cases}
+  \textsc{scam}, & \exists t:\ell_t=1,\\
+  \textsc{non-scam}, & \text{otherwise}.
  \end{cases}
- \label{eq:state}
+ \qquad
+ U(C)=\mathbb{I}\!\left[\exists t:
+ \mathcal B_t\cap\mathcal T\neq\varnothing\right].
+ \label{eq:binary-label}
 \end{equation}
-where $D$ denotes Financial\_Demand. Thus ordinary messages do not erase
-previously observed setup, and setup need not be preceded by a rapport phase
-(Figure~\ref{fig:lifecycle}). This is a working summary of observed behavior,
-not a claim that every person follows a monotonic psychological process.
+Here $U(C)$ records whether a scam-like trajectory is present; it is not a third
+label. Thus a conversation containing tactics but no linked demand remains
+\textsc{non-scam} with $U(C)=1$. If a first demand is not tactic-linked, later
+tactics can still support a warning before a repeated demand; later evidence does
+not retroactively change what was observable at the first demand.
 
-\begin{figure}[tb]
-\centering\resizebox{\linewidth}{!}{\input{figures/lifecycle_graph}}
-\caption{Illustrative transitions in the working lifecycle summary. All states
-can persist, and observed conversations may skip stages. Reaching the final
-state does not itself establish exploitation.}
-\label{fig:lifecycle}
-\end{figure}
+The project uses each eligible transcript as observed. A screenshot may begin
+mid-conversation, and a complete transcript need not begin with a greeting.
+Extraction quality therefore checks whether visible messages were recovered in
+order with correct speakers, while capture format is retained as metadata for
+stratified analysis. Neither a missing greeting nor source provenance determines
+the operational label.
 
-Conversation labels are derived separately. Let $q_t=1$ only when a demand is
-interpreted as exploitative and its cited earlier setup messages support that
-interpretation. Citations must resolve to the correct preceding messages;
-human review must assess their semantic support. For an eligible, reviewed
-conversation $C$, the operational rule is
-\begin{equation}
-Y(C)=\begin{cases}
-\textsc{scam}, & \exists t:\ a_t=D\ \land\ q_t=1,\\
-\textsc{suspicious}, & \text{otherwise, if a setup trigger occurs},\\
-\textsc{non-scam}, & \text{otherwise}.
-\end{cases}
-\label{eq:label}
-\end{equation}
-Unresolved annotations will be withheld from conversation-level supervision
-rather than converted into negative targets. The state and label can disagree:
-a legitimate payment request after a crisis can reach state 4 without satisfying
-Equation~\ref{eq:label}'s scam condition.
+\subsection{Proxy corpus and scam-family coverage}
+Complete private scam conversations are scarce and difficult to release. We
+assembled a proxy corpus from recorded scam exchanges, public scambait screenshots,
+ordinary dialogue, legitimate persuasive requests, and generated conversations.
+LoveFraud02 contains researcher-recorded exchanges with purported romance-fraud
+perpetrators, while Reddit Scambait contains screenshot-based encounters in which
+people knowingly engage suspected scammers~\cite{faber2024lovefraud02,lu2026readthis}.
+These sources provide real scam language but are not a representative sample of
+unsuspecting victims: scambaiting is performative, screenshot sequences can omit
+context, and public reports are selected for posting.
 
-\subsection{Proxy dataset and preliminary observations}
-Direct, complete records of private scam conversations are scarce. We therefore
-assembled a proxy corpus combining recorded exchanges, public screenshots,
-ordinary dialogue, and legitimate persuasive requests. LoveFraud02 contains
-researcher-recorded exchanges with purported romance-fraud perpetrators;
-Reddit Scambait provides screenshot-based exchanges involving people who knowingly
-engage suspected scammers~\cite{faber2024lovefraud02,lu2026readthis}.
-Neither source should be described as a representative sample of unsuspecting
-victims. Missing screenshots, selective posting, performative responses, and
-uncertain role attribution limit what they establish.
-
-Topical-Chat and a DailyDialog-derived subset provide ordinary dialogue, while
-PersuasionForGood provides financially consequential but legitimate donation
-requests~\cite{gopalakrishnan2019topical,li2017dailydialog,wang2019persuasion}.
-The latter is particularly important for distinguishing persuasion from fraud.
-Generated investment/relationship conversations and report-grounded ScamForge
-conversations extend the available behavior combinations. Their intended scam
-or benign status is a generation condition, not a verified label. They will
-support controlled stress tests and augmentation experiments, with primary
-real-source evaluation reported separately.
+Topical-Chat and XDailyDialog provide ordinary dialogue, and PersuasionForGood
+provides legitimate requests for charitable donations
+~\cite{gopalakrishnan2019topical,li2017dailydialog,wang2019persuasion}.
+The latter supplies a difficult comparison because persuasion and a financial
+request are present without fraud. Generated pig-butchering and ScamForge
+conversations extend combinations that are rare in the real collections. Their
+generation condition is retained as provenance rather than treated as a validated
+verdict, and results on real and generated sources will be reported separately.
 
 \begin{table}[tb]
 \centering\small
 \begin{tabularx}{\linewidth}{@{}Xrr@{}}
 \toprule
-Source & Conversations & Annotated suspect messages \\
+Source & Conversations & Suspect messages \\
 \midrule
 LoveFraud02 & 83 & 26,423 \\
-Reddit Scambait & 1,142 & 64,290 \\
+Reddit Scambait & 1,166 & 65,685 \\
 Topical-Chat & 8,628 & 97,204 \\
-DailyDialog-derived subset & 3,100 & 19,981 \\
+XDailyDialog & 3,100 & 19,981 \\
 PersuasionForGood & 1,017 & 10,600 \\
 Generated pig-butchering scenarios & 5,683 & 237,296 \\
 Generated ScamForge scenarios & 3,097 & 152,371 \\
 \midrule
-Total & 22,750 & 608,165 \\
+Total & 22,774 & 609,560 \\
 \bottomrule
 \end{tabularx}
-\caption{Existing proxy corpus after the documented scope exclusions, before
-adding the new Reddit crawl. Message counts describe annotated suspect-side
-messages, not all messages exchanged. Source provenance is distinct from the
-operational labels; revised annotations remain subject to validation.}
+\caption{Assembled proxy corpus. Counts describe suspect-side messages available
+to the annotation pipeline. Source groups describe how conversations were
+obtained; they are not the final transcript-derived labels.}
 \label{tab:data}
 \end{table}
 
-\textbf{Preliminary result.} In the current rule-derived analysis, 520
-conversations from the real scam-source collections receive a scam label.
-They contain a median of two distinct mapped indicators before the first
-financial demand; 52.3\% contain at least two. Among 1,685 benign-source
-conversations containing a demand but not receiving a scam label, 90.1\%
-contain no mapped indicator before that demand. These observations motivate
-studying context, but are not independent evidence of detector accuracy:
-both the indicators and cohort labels are derived from provisional annotations.
-The pilot will examine label errors and legitimate uses of the same behaviors.
+A separate live and archival Reddit collection has indexed 92,595 distinct
+scambait posts and 319,008 Reddit image attachments, most of which are chat
+screenshots. The latter is a media-index count that includes unavailable files;
+251,624 entries were on disk or recovered at the latest completed audit. A
+screenshot may contain multiple visible chat messages, and a post may contain
+multiple screenshots, so neither figure represents extracted conversations or
+messages. Series reconstruction preserves the
+evidence used to join posts that appear to belong to one exchange. These records
+are not included in Table~\ref{tab:data}: screenshot extraction, speaker and
+message-order checks, deduplication, and a held-out quality audit must precede
+their admission to the conversation corpus. The same image-preserving collection
+also supplies the primary candidate pool for the proposed multimodal study in
+Section~\ref{sec:proposed}. It retains the source images needed to recover both
+message text and embedded credibility artifacts such as identity documents,
+receipts, photographs, and balance or investment screenshots.
 
-The new Reddit collection will expand candidate coverage, but its posts and
-images will enter this table only after conversation reconstruction,
-deduplication, and quality review. Increasing the number of screenshots alone
-does not resolve the corpus's source bias.
+To describe coverage without conflating a scam name with its mechanism, the
+current mapping follows seven expected-benefit or expected-consequence families
+from Beals et al.~\cite{beals2015fraud}. Each conversation receives one primary
+family; relationship use, impersonated identity, payment mechanism, and a common
+name are orthogonal modifiers. For example, pig butchering that promises returns
+belongs to Consumer Investment, with \texttt{relationship\_used=true} and
+\texttt{named\_scam=pig\_butchering}. ``Advance fee'' records how value is taken
+and can occur in several families, so it is not a universal primary family.
 
-\subsection{Detection model and remaining evaluation}
-\textbf{Stage 1: interpreting the message.} Let $m_t$ be the current suspect
-message and $\mathcal H_t^{(k)}$ the preceding context, including both speakers.
-A message classifier produces a distribution over the fourteen behaviors:
+\begin{table}[tb]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}p{.28\linewidth}XX@{}}
+\toprule
+Primary family & Organizing expectation & Examples or modifiers \\
+\midrule
+Consumer Investment & Return on an investment & crypto, forex, investment-return pig butchering \\
+Consumer Products/Services & Product, service, credit, or sale & marketplace, fake buyer, tech support, recovery, fake loan, paid service \\
+Employment & Income from work & fake job, reshipping, mystery shopper, multilevel marketing \\
+Prize/Grant & Prize, grant, inheritance, or windfall & lottery, sweepstakes, inheritance, government grant, Nigerian letter \\
+Phantom Debt Collection & Avoiding a claimed debt consequence & tax, toll, court, or medical debt \\
+Charity & Supporting a claimed cause or hardship & disaster, religious, personal appeal \\
+Relationship/Trust & Maintaining or helping a relationship & romance, allowance, grandparent, friend/relative, boss request \\
+\bottomrule
+\end{tabularx}
+\caption{Conversation-level family mapping. These labels describe corpus
+coverage and support family-held-out evaluation; the completed-conversation
+family label is not supplied to the causal detector.}
+\label{tab:families}
+\end{table}
+
+An initial model-assisted pass over 520 in-scope real-source candidates proposed
+218 Relationship/Trust, 78 Products/Services, 53 Prize/Grant, 31 Investment,
+13 Employment, eight Charity, and two Phantom Debt cases; it also returned 115
+\texttt{NONE} and two unparsed outputs. That distribution is provisional. An
+automated audit flagged 67 of the 520 outputs. Independent review of the 115
+\texttt{NONE} cases agreed on the apparent family in 97 cases and assigned 108 to
+one of the seven families, showing that the unreviewed model output substantially
+undercounted several families. The final distribution will be reported only after
+all flagged and probability-sampled cases receive a second reading.
+
+\subsection{Lifecycle groups, triggers, and forms}
+The representation separates a conversation family from what each message does.
+It uses four non-exclusive evidence groups:
 \begin{equation}
-\mathbf z_t=\operatorname{softmax}\!\left(f_\theta(m_t,\mathcal H_t^{(k)})\right),
-\qquad \mathbf z_t\in[0,1]^{14}.
-\label{eq:encoder}
+ \text{Contact}\ \longrightarrow\ \text{Relationship}\
+ \ \longrightarrow\ \text{Tactics}\ \rightleftarrows\
+ \ \text{Financial Demand}.
+ \label{eq:lifecycle}
 \end{equation}
-The prototype uses compact Transformer encoders. I will compare DistilBERT,
-ModernBERT, and an on-device LLM adapted for behavioral classification, including
-appropriate distilled or quantized variants~\cite{sanh2019distilbert,warner2024modernbert,hu2022lora}.
-A common behavioral interface will support comparison of contextual accuracy,
-latency, memory, and energy. A larger context window or model is an experimental
-choice, not an assumed improvement.
+The arrows summarize common progressions rather than impose a required order.
+Groups may be skipped, repeated, or revisited after a demand. In particular,
+Relationship is not a benign state, Tactics is one group rather than three states,
+and Financial Demand is an observable act rather than an automatic verdict.
 
-\textbf{Stage 2: interpreting the sequence.} The prototype passes trigger
-probabilities to a unidirectional GRU~\cite{cho2014gru}:
+The four groups are separated by the function a behavior serves in relation to
+financial extraction, as summarized in Table~\ref{tab:lifecycle-functions}.
+
+\begin{table}[tb]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}p{.20\linewidth}X@{}}
+\toprule
+Group & Function in the observed conversation \\
+\midrule
+Contact & Opens the interaction. \\
+Relationship & Builds or maintains the interaction itself. \\
+Tactics & Creates a reason, condition, or pressure for the target to give up economic value. \\
+Financial Demand & Asks the target to give up that value. \\
+\bottomrule
+\end{tabularx}
+\caption{Functional definition of the four lifecycle groups. The groups describe
+what a behavior does, rather than require it to occur at a fixed point in time.}
+\label{tab:lifecycle-functions}
+\end{table}
+
+The central boundary is between Relationship and Tactics. We apply a functional
+test: could the observed behavior serve as the reason, condition, or lever for a
+payment request? Routine conversation, personal disclosure, and affection build
+the interaction but do not, by themselves, supply that basis. A claimed identity
+or status, promised return, crisis, verification avoidance, request for secrecy,
+deadline, or emotional condition can do so. This division parallels prior
+lifecycle accounts that distinguish grooming from the sting and bonding from the
+bait or squeeze~\cite{whitty2013scammers,oak2025anna}.
+
+Romantic affection therefore remains a Relationship behavior even when it occurs
+inside a romance scam. For example, ``I love you'' does not itself make a later
+request for money tactic-linked. A fabricated hospital crisis, or making affection
+conditional on payment, supplies Tactics evidence that may support such a link.
+Operationally, Relationship evidence alone cannot satisfy the demand-link relation
+in Equation~\ref{eq:demand-link}. Tactics evidence is eligible to do so only when
+the annotation records an explicit connection to the demand. A demand for which no
+such connection is yet visible is \texttt{not\_yet\_tactic\_linked}; this describes
+the observed evidence and does not establish that the request is legitimate.
+
+\begin{figure}[tb]
+\centering\resizebox{\linewidth}{!}{\input{figures/lifecycle_graph}}
+\caption{Current lifecycle representation. The detector consumes the ordered
+message sequence; the four groups organize evidence for interpretation and do
+not force a monotone state path.}
+\label{fig:lifecycle}
+\end{figure}
+
+The candidate annotation vocabulary contains thirteen observable triggers
+(Table~\ref{tab:triggers}). Every suspect message receives at least one trigger,
+and independently supported triggers can co-occur. \emph{Routine Engagement}
+labels a greeting, acknowledgment, check-in, joke, or everyday exchange that
+keeps an established conversation active when no more specific behavior is
+expressed. It is therefore a positive account of ordinary maintenance rather
+than an ``other'' category. The first visible message is assigned
+\emph{Contact Initiation} only when its content or visible context actually
+establishes the interaction.
+
+\begin{table}[tb]
+\centering\scriptsize
+\begin{tabularx}{\linewidth}{@{}p{.13\linewidth}p{.23\linewidth}Xp{.25\linewidth}@{}}
+\toprule
+Group & Trigger & Observable function & Closed forms, when used \\
+\midrule
+Contact & Contact\_Initiation & Attempts to establish the interaction & ordinary greeting; wrong number; mistaken identity; direct approach \\
+\midrule
+Relationship & Routine\_Engagement & Keeps an established interaction active & --- \\
+& Personal\_Disclosure & Shares or elicits personal, vulnerable, or intimate information & --- \\
+& Affectionate\_Bonding & Builds or intensifies affection or romantic commitment & warmth/endearment; romantic interest; commitment \\
+\midrule
+Tactics & Credential\_Positioning & Invokes identity, standing, resources, expertise, access, or connections for credibility & identity/relationship; authority/status; wealth/resources; profession/expertise; access/connection \\
+& Gain\_Offer & Presents an economic opportunity or benefit & investment return; employment income; prize/grant/inheritance; loan/credit/debt relief; gift/allowance; product/service; donation/support \\
+& Crisis\_Disclosure & Presents an emergency or acute hardship & --- \\
+& Verification\_Avoidance & Evades an independent check or substitutes controlled proof & --- \\
+& Platform\_Migration & Requests movement to another communication channel & --- \\
+& Secrecy\_Request & Requests concealment or deletion of evidence & --- \\
+& Urgency\_Pressure & Uses a deadline, scarcity, or demand for immediate action & --- \\
+& Emotional\_Leverage & Makes affection, guilt, obligation, approval, fear, or relational loss conditional on compliance & --- \\
+\midrule
+Demand & Financial\_Demand & Requests or instructs an action costing economic value & payment method recorded separately \\
+\bottomrule
+\end{tabularx}
+\caption{Candidate multilabel trigger vocabulary and closed forms. Forms preserve
+distinctions within a shared conversational function without turning each
+surface realization into another top-level trigger.}
+\label{tab:triggers}
+\end{table}
+
+This granularity follows a functional rule: a top-level trigger must change what
+the sequence model should retain about the interaction. Closely related content
+with the same function remains a form. Thus a claim of authority and a claim of
+wealth are distinct Credential Positioning forms because both attempt to raise
+the standing on which later claims are believed; the planned ablation will test
+whether retaining those forms improves detection. The inventory claims coverage
+of observable behaviors relevant to the in-scope scam definition, not every act
+in human conversation. Its coverage will be tested by residual review across all
+seven families, explicit searches for missed acts, co-occurrence analysis, and
+inter-annotator agreement. A new trigger is added only when reviewed examples
+show an independently observable function that the existing triggers cannot
+represent and that Stage~2 can use.
+
+For interpretation, define a four-dimensional accumulated-presence summary
 \begin{equation}
-\mathbf h_t=\operatorname{GRU}_\phi(\mathbf z_t,\mathbf h_{t-1}),
-\qquad r_t=\sigma(\mathbf w^\top\mathbf h_t+c).
-\label{eq:sequence}
+ \mathbf s_t=[c_t,r_t,u_t,d_t],\qquad
+ \mathbf s_t=\mathbf s_{t-1}\lor G(\mathcal B_t),
+ \label{eq:evidence-summary}
 \end{equation}
-Here $\mathbf h_t$ retains information across messages and $r_t$ is a learned
-risk score. The learned memory is distinct from the deterministic state $s_t$.
-I will compare the GRU with an LSTM and an explicit lifecycle updater, and test
-whether joint training improves on a frozen message encoder. Message-only and
-bounded-context baselines will establish whether sequence memory contributes
-beyond the current message (Figure~\ref{fig:architecture}).
+where $G$ maps the current behavior set to Contact, Relationship, Tactics, and
+Financial Demand, and $\lor$ is element-wise logical OR. This summary permits
+skipped groups but loses repetitions after a bit first turns on. The learned
+model therefore receives the full ordered per-message sequence; Equation
+~\ref{eq:evidence-summary} is used only for explanation or as an ablation.
+
+For a financial demand, annotation records only information that has a defined
+role: one or more payment methods and the evidence links used to validate
+Equation~\ref{eq:demand-link}. The closed payment list is cash, bank or wire,
+card, gift card, cryptocurrency, peer-to-peer application, cheque, online
+platform, mobile money or airtime, goods or property, and unspecified. Requested
+amount and recipient are not mandatory structured fields: an exploratory scan
+found amount mentions at similar rates in scam and benign messages, while those
+values can still be extracted later for descriptive analysis.
+
+\subsection{Preliminary measurements and baselines}
+The earlier single-label annotations provide motivation, not final ground truth.
+Under their automated rule, 520 real-source conversations contained a qualifying
+demand. They had a median of two distinct mapped indicators before the first
+demand, and 52.3\% had at least two. Among 1,685 Topical-Chat, XDailyDialog, and
+PersuasionForGood conversations containing a demand but not receiving that scam
+label, 90.1\% contained no mapped indicator before the demand. Indicator frequency
+also varied with length: a money-making offer appeared in 33.6\% of the shortest
+quartile but 13.2\% of the longest, while affection and emotional leverage became
+more common in longer conversations. This is consistent with shorter investment
+approaches and longer relationship approaches, and cautions against treating one
+tactic as necessary.
+
+A conversation-level audit selected one demand from each of 751 rule-positive and
+1,337 rule-negative conversations in the real-source subset. The first selected
+demand occurred within the first four suspect messages in 53 of 751 positives
+(7.1\%) and 735 of 1,337 negatives (55.0\%). Gift-card, cryptocurrency, or
+peer-to-peer payment language appeared in 98 positives and eight negatives; among
+the early demands it appeared in nine positives and five negatives. These values
+show why payment method is a candidate feature, but they do not estimate field
+precision. The benign sources contain little realistic person-to-person payment
+conversation, so payment-method gains must be tested on a dedicated benign payment
+stress set and under source-held-out evaluation.
+
+We also compared demand-only and completed-conversation baselines over all 22,774
+conversations. For this preliminary comparison only, source provenance supplies
+the positive and negative groups because the revised transcript labels are not
+yet validated. The five encoders were trained previously to recognize heuristic
+financial-demand labels; the zero-shot Gemma 4 E4B judge received the completed
+conversation. Table~\ref{tab:baselines-22774} therefore measures separation of
+the assembled source collections rather than performance against the final
+operational rule.
+
+\begin{table}[tb]
+\centering\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lcrr@{}}
+\toprule
+System & Scam $F_1$ [95\% CI] & Scam-source missed & Benign-source flagged \\
+\midrule
+Keyword financial-demand rule & .718 [.709, .727] & 797 & 2,529 \\
+DistilBERT demand classifier & .710 [.701, .719] & 789 & 2,676 \\
+BERT-base demand classifier & .712 [.703, .721] & 791 & 2,634 \\
+FinBERT demand classifier & .713 [.703, .722] & 795 & 2,620 \\
+DeBERTa-v3 demand classifier & .705 [.695, .714] & 842 & 2,667 \\
+MobileBERT demand classifier & .716 [.706, .725] & 808 & 2,546 \\
+Zero-shot completed-conversation judge & .896 [.890, .903] & 296 & 797 \\
+\bottomrule
+\end{tabular}
+\caption{Preliminary source-proxy baselines. Confidence intervals use 5,000
+multinomial bootstrap draws. The completed-conversation judge can use evidence
+after a demand and therefore is not an early-warning baseline.}
+\label{tab:baselines-22774}
+\end{table}
+
+The demand detectors cluster between $F_1=.705$ and $.718$, supporting the
+motivation that recognizing a request for money does not determine whether it is
+fraudulent. The completed-conversation judge reaches $F_1=.896$ but still misses
+296 scam-source conversations and flags 797 benign-source conversations; it also
+has access to future messages unavailable to a causal detector.
+
+The implemented encoder--GRU prototype supplies a second starting point. Nested
+five-fold cross-validation selected ModernBERT with ten preceding messages. On
+the original 1,297-conversation test partition and its original labels, it
+obtained scam $F_1=.863\pm.005$ across seeds 7, 42, and 123, recall from .875 to
+.917, and eight to ten false positives among 1,249 original negatives. Per-seed
+bootstrap intervals spanned [.775, .933]. Re-scoring the unchanged models against
+the provisional revised labels reduced mean $F_1$ to $.701\pm.007$ and mean recall
+to .610 because the positive count changed from 48 to 70. This is evidence of
+label mismatch, not a retrained result; the revised annotation must be validated
+before the model is retrained and a new headline value is reported.
+
+\subsection{Revised two-stage model}
+\textbf{Stage 1: behavioral interpretation.} Let $x_{1:t}$ denote the current
+message and all context from both speakers available through that message.
+DistilBERT, ModernBERT,
+and an adapted on-device language model will be compared as contextual encoders
+~\cite{sanh2019distilbert,warner2024modernbert,hu2022lora}. Each encoder produces
+a shared representation
+\begin{equation}
+ \mathbf h_t^{\mathrm{enc}}=\operatorname{Encoder}_{\theta}(x_{1:t}).
+ \label{eq:shared-encoder}
+\end{equation}
+Thirteen independent sigmoid outputs preserve co-occurring behaviors:
+\begin{equation}
+ \mathbf p_t^{\mathrm{trigger}}=
+ \sigma(\mathbf W_{\mathrm{trig}}\mathbf h_t^{\mathrm{enc}}+
+ \mathbf b_{\mathrm{trig}})\in[0,1]^{13}.
+ \label{eq:trigger-head}
+\end{equation}
+These values need not sum to one. A softmax would force one label and reproduce
+the loss of information observed when an urgent gift-card demand could be labeled
+only as Financial Demand.
+
+Four conditional form heads represent four Contact forms, three Affectionate
+Bonding forms, five Credential Positioning forms, and seven Gain Offer forms.
+For parent trigger $r$,
+\begin{equation}
+ \mathbf q_t^{\mathrm{form}(r)}=
+ \operatorname{softmax}(\mathbf W_r\mathbf h_t^{\mathrm{enc}}+\mathbf b_r),
+ \qquad
+ \mathbf p_t^{\mathrm{form}(r)}=p_t(r)\mathbf q_t^{\mathrm{form}(r)}.
+ \label{eq:form-head}
+\end{equation}
+The four gated blocks concatenate to
+$\mathbf p_t^{\mathrm{form}}\in[0,1]^{19}$; each form loss is evaluated only when
+its parent trigger is present. Payment methods are multilabel because one demand
+can name more than one mechanism:
+\begin{equation}
+ \mathbf q_t^{\mathrm{pay}}=
+ \sigma(\mathbf W_{\mathrm{pay}}\mathbf h_t^{\mathrm{enc}}+\mathbf b_{\mathrm{pay}}),
+ \qquad
+ \mathbf p_t^{\mathrm{pay}}=p_t(D)\mathbf q_t^{\mathrm{pay}}
+ \in[0,1]^{11}.
+ \label{eq:payment-head}
+\end{equation}
+The value \texttt{unspecified} is positive only when a demand names none of the
+ten explicit methods. Payment loss is evaluated only for demand messages.
+
+An optional learned projection retains contextual wording outside the structured
+inventory:
+\begin{equation}
+ \mathbf e_t=\mathbf W_{\mathrm{proj}}\mathbf h_t^{\mathrm{enc}}+
+ \mathbf b_{\mathrm{proj}}\in\mathbb R^d,
+ \qquad
+ \mathbf z_t=[\mathbf p_t^{\mathrm{trigger}};
+ \mathbf p_t^{\mathrm{form}};\mathbf p_t^{\mathrm{pay}};\mathbf e_t]
+ \in\mathbb R^{43+d}.
+ \label{eq:stage1-vector}
+\end{equation}
+Stage~2 receives this one concatenated numeric vector, not raw text and not gold
+annotations. With $d=64$, for example, $\mathbf z_t$ has 107 dimensions.
+
+\textbf{Stage 2: causal aggregation.} A unidirectional GRU processes the ordered
+Stage~1 vectors~\cite{cho2014gru}:
+\begin{equation}
+ \mathbf g_t=\operatorname{GRU}_{\phi}(\mathbf z_t,\mathbf g_{t-1}),
+ \qquad
+ \hat y_t=\sigma(\mathbf w^{\top}\mathbf g_t+b).
+ \label{eq:stage2}
+\end{equation}
+The recurrent memory can represent order, repetition, co-occurrence, demand
+position, and tactics that appear between repeated demands. The final family,
+demand links, demand-link status, and conversation label are supervision or
+evaluation outputs and are never detector inputs.
 
 \begin{figure}[tb]
 \centering\resizebox{\linewidth}{!}{\input{figures/conversation_architecture}}
-\caption{Two-stage detection design. The encoder--GRU text pipeline provides
-the prototype; model choice, warning thresholds, and device performance will be
-evaluated. Private text is processed locally, including a bounded context buffer.}
+\caption{Revised two-stage architecture. Stage~1 predicts behaviors and selected
+attributes from the available prefix. Stage~2 aggregates only causal numeric
+outputs and produces an updated risk score after each message.}
 \label{fig:architecture}
 \end{figure}
 
-\textbf{Preliminary result and its boundary.} Nested cross-validation selected
-a ModernBERT configuration with ten preceding messages. On the original
-1,297-conversation test partition and its original labels, the selected system
-obtained scam F$_1=0.863\pm0.005$ across three seeds. This establishes a prototype
-baseline, not performance under the revised supervision. The revised label rule
-changes the target population, so retraining and fresh validation are required
-before a new headline result is reported. The Android integration demonstrates
-an implementation path; reliable early warning and protective impact have not
-been established by integration alone.
+The design will be tested by four nested ablations: triggers alone; triggers plus
+forms; triggers, forms, and payment method; and the full vector with the compact
+text projection. The payment block will be retained only if gains survive testing
+on realistic benign payment conversations and source-held-out splits. The text
+projection can also encode source style, so it will be retained only if its gains
+survive both source-held-out and family-held-out evaluation. A random-split gain
+alone is insufficient.
 
-\researchquestion{RQ-T: Can a behavioral sequence support timely, transferable warnings?}
-I will first validate the revised annotation guide on a human-reviewed pilot,
-including all fourteen behaviors, legitimate money requests, uncertain cases,
-and behaviors missing from the vocabulary. The resulting eligibility decisions
-will govern training and testing. I will then compare model configurations with
-selection confined to training/validation data and use newly reserved evaluation
-conversations~\cite{cawley2010overfitting,varma2006bias}. Related posts,
-conversation fragments, and generated variants will remain in the same partition.
+\subsection{Validation and remaining work}
+The next annotation pilot will compare the earlier single-label output with the
+candidate multilabel representation on a coverage-based sample containing
+positive and boundary cases for every trigger, form, payment method, and important
+co-occurrence, across transcript and screenshot sources. At least two independent
+annotators will label the same conversations. Validation will report prevalence,
+positive agreement, and a chance-corrected agreement statistic for each trigger;
+kappa alone is insufficient for rare labels. Reviewers will also search for
+relevant behaviors outside the inventory. Only after semantic disagreements and
+evidence-link errors are resolved will the full corpus be annotated.
 
-Evaluation will report class-specific precision/recall, macro-F$_1$, calibration,
-and false alarms per conversation, alongside warning time. If $d$ is the message
-position of the first validated exploitative demand and $\tau$ is a threshold
-chosen on validation data, define
+\researchquestion{RQ-T: Can a causal behavioral sequence support timely and
+transferable scam warnings?}
+Training, validation, and test partitions will keep related posts, fragments, and
+generated variants together~\cite{cawley2010overfitting,varma2006bias}. Evaluation
+will report message-level trigger and attribute accuracy, conversation-level
+precision and recall, macro-$F_1$, calibration, and false alerts per conversation.
+Entire-source and leave-one-family-out partitions will test whether the model
+learns the intended behavior sequence rather than source style or one scam family.
+
+Warning time will be measured causally at four checkpoints: before the first
+observed demand, at that demand, after it but before a repeated demand, and by the
+end of the observed exchange. If $d_1$ is the first tactic-linked demand and
+$\tau$ is selected on validation data, define
 \begin{equation}
-\hat t_\tau=\min\{t:r_t\geq\tau\},\qquad L_\tau=d-\hat t_\tau.
-\label{eq:lead}
+ \hat t_\tau=\min\{t:\hat y_t\geq\tau\},\qquad
+ L_\tau=d_1-\hat t_\tau.
+ \label{eq:lead}
 \end{equation}
-Positive $L_\tau$ denotes a warning before the demand. I will report missed
-warnings separately, rather than omit them from average lead time; false alarms
-will also be measured in conversations without an exploitative demand.
+Positive $L_\tau$ is a warning before the demand. Missed warnings will be reported
+separately rather than omitted from average lead time. At a detected financial
+demand below the scam threshold, the product can present a neutral pause-and-verify
+notice without claiming that the request is fraudulent.
 
-Entire-source and family holdouts will test transfer within the families with
-sufficient examples. Adversarial experiments will insert plausible ordinary
-conversation before or between setup messages: such padding can push evidence
-out of bounded context or dilute a learned sequence. Paraphrases and delayed
-requests will test related failure modes. Comparisons will preserve the
-underlying scam evidence and measure both missed detection and additional
-warning delay. On-device replay will assess agreement with the research model,
-quantization effects, latency, peak memory, and energy on named hardware.
-Cross-application linkage and warning presentation will be evaluated as
-extensions, with explicit consent and human-subjects review before any user study.
+Adversarial evaluation will insert plausible ordinary messages before or between
+tactics, because padding can push evidence outside a bounded context or dilute a
+learned sequence. Paraphrased tactics, delayed and repeated demands, changed
+payment methods, and removed platform-specific terms will test related failure
+modes. On-device replay will measure agreement with the research model,
+quantization effects, latency, peak memory, and energy on named hardware. The
+Android integration establishes an implementation path; the annotation study,
+retraining, holdout experiments, early-warning evaluation, and device measurements
+are the work required to establish the proposed system.
+
 
 \section{Proposed Work: Credibility Artifacts in Conversational Scams}
 \label{sec:proposed}
@@ -488,9 +748,12 @@ are available, what claims they support, and when they appear. Without this
 measurement, a multimodal extension could focus on visually distinctive but
 rare or late-arriving content.
 
-\textbf{Approach.} I will combine the existing screenshot collection with a
-continuing Reddit crawl and historical archive retrieval. The collection will
-retain post identifiers, gallery order, available media, and retrieval status.
+\textbf{Approach.} I will use the existing screenshot collection and the completed
+live and historical Reddit post index described in Section~\ref{sec:sirenbert}.
+Its full-resolution images support both conversation-text reconstruction and the
+recovery of media embedded within those conversations. The collection retains
+post identifiers, gallery order, available media, and retrieval status; media
+backfill and conversation extraction remain in progress.
 I will reconstruct messages and embedded artifact regions while retaining
 links to their source pixels. Text recognition, spatial layout, and a vision
 language model will be compared for transcription and speaker attribution.
@@ -567,8 +830,9 @@ design will process private media locally. Any remote lookup would require its
 own privacy and utility analysis; privacy does not follow from using an image hash.
 
 \subsection{Feasibility, risks, and completion criteria}
-A Reddit collection and screenshot-extraction prototype are already underway.
-Initial extraction runs demonstrate that structured text and artifact candidates
+A live and archival Reddit collection is complete, while media backfill and the
+screenshot-extraction prototype remain underway. Initial extraction runs
+demonstrate that structured text and artifact candidates
 can be recovered, while tall screenshots, speaker confusion, and tile overlap
 remain concrete challenges. These are feasibility observations, not a completed
 accuracy evaluation. Screenshot crops may be too small or degraded for reliable

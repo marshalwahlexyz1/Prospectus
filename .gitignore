@@ -1,0 +1,14 @@
+# LaTeX build products
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.dvi
+*.ps
+*.fls
+*.fdb_latexmk
+*.synctex.gz

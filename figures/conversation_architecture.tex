@@ -1,15 +1,27 @@
-\begin{tikzpicture}[font=\small, >=Latex,
- block/.style={draw=blue!55!black, rounded corners=2pt, fill=blue!4, align=center, minimum height=1.18cm},
+\begin{tikzpicture}[font=\scriptsize,>=Latex,
+ block/.style={draw=blue!55!black,rounded corners=2pt,fill=blue!4,align=center,minimum height=1.05cm},
+ head/.style={draw=green!45!black,rounded corners=2pt,fill=green!4,align=center,minimum height=.72cm},
  flow/.style={->,thick,draw=blue!55!black}]
-\node[block,text width=2.6cm] (input) at (0,0) {Message $m_t$\\+ recent context};
-\node[block,text width=3.0cm] (s1) at (3.75,0) {\textbf{Stage 1}\\Behavior classifier\\$\mathbf z_t\in[0,1]^{14}$};
-\node[block,text width=3.0cm] (s2) at (7.85,0) {\textbf{Stage 2}\\Sequence model\\memory $\mathbf h_t$};
-\node[block,text width=2.2cm] (warning) at (11.7,0) {Risk $r_t$\\Warning policy};
-\draw[flow] (input)--(s1);
-\draw[flow] (s1)--node[above,font=\scriptsize]{$\mathbf z_t$}(s2);
-\draw[flow] (s2)--(warning);
-\draw[flow] (s2.south east) -- ++(0,-.42) -| (s2.south west);
-\node[font=\scriptsize,align=center] (memory) at (7.85,-1.35) {Memory carried to the next message};
-\node[draw=blue!55!black,dashed,rounded corners,fit=(input)(s1)(s2)(warning)(memory),inner xsep=7pt,inner ysep=13pt] (device) {};
-\node[anchor=south west,font=\scriptsize\bfseries,text=blue!55!black] at (device.north west) {ON-DEVICE DETECTION: TEXT PROTOTYPE AND PLANNED MODEL COMPARISONS};
+\node[block,text width=2.1cm] (input) at (0,0) {Message $x_t$\\+ available prefix $x_{1:t-1}$};
+\node[block,text width=2.25cm] (enc) at (3.0,0) {\textbf{Stage 1}\\shared contextual\\encoder $\mathbf h_t^{\rm enc}$};
+\node[head,text width=1.75cm] (trig) at (6.1,1.8) {13 trigger\\probabilities};
+\node[head,text width=1.75cm] (form) at (6.1,.6) {19 gated\\form values};
+\node[head,text width=1.75cm] (pay) at (6.1,-.6) {11 gated payment-\\method values};
+\node[head,text width=1.75cm] (embed) at (6.1,-1.8) {optional $d$-dim.\\projection};
+\node[block,text width=2.05cm] (concat) at (8.85,0) {Concatenate\\$\mathbf z_t\in\mathbb R^{43+d}$};
+\node[block,text width=2.0cm] (gru) at (11.65,0) {\textbf{Stage 2}\\causal GRU\\memory $\mathbf g_t$};
+\node[block,text width=1.65cm] (risk) at (14.15,0) {Risk $\hat y_t$\\warning policy};
+\draw[flow] (input)--(enc);
+\draw[flow] (enc.east) -- ++(.45,0) |- (trig.west);
+\draw[flow] (enc.east) -- ++(.45,0) |- (form.west);
+\draw[flow] (enc.east) -- ++(.45,0) |- (pay.west);
+\draw[flow] (enc.east) -- ++(.45,0) |- (embed.west);
+\draw[flow] (trig.east) -- ++(.45,0) |- (concat.west);
+\draw[flow] (form.east) -- ++(.45,0) |- (concat.west);
+\draw[flow] (pay.east) -- ++(.45,0) |- (concat.west);
+\draw[flow] (embed.east) -- ++(.45,0) |- (concat.west);
+\draw[flow] (concat)--(gru);
+\draw[flow] (gru)--(risk);
+\draw[flow] (gru) edge[loop below,looseness=5,min distance=8mm]
+  node[below]{memory carried forward} (gru);
 \end{tikzpicture}
